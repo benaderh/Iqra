@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.recitequran.app"
-    compileSdk = maxOf(flutter.compileSdkVersion, 37)
+    compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     val keystoreProperties = Properties()
