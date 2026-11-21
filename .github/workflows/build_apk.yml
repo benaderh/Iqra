@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-apk:
-    name: Build Debug APK
+    name: Build APK (single, online mode)
     runs-on: ubuntu-latest
 
     steps:
@@ -27,34 +27,20 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Download ONNX model from Hugging Face
-        run: |
-          mkdir -p assets/model
-          curl -L "https://huggingface.co/Tidzo/darten-zipformer-quran/resolve/main/zipformer_p_arabic_v3.int8.onnx" \
-            -o assets/model/zipformer_p_arabic_v3.int8.onnx
-          echo "Model size: $(du -sh assets/model/zipformer_p_arabic_v3.int8.onnx)"
-
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK split par architecture
-        run: flutter build apk --debug --split-per-abi --android-skip-build-dependency-validation
+      - name: Build APK (single universal)
+        run: flutter build apk --debug --android-skip-build-dependency-validation
 
-      - name: Afficher la taille des APKs
+      - name: Afficher la taille de l'APK
         run: |
-          echo "=== Taille des APKs générés ==="
-          du -sh build/app/outputs/flutter-apk/*.apk
+          echo "=== Taille APK ==="
+          du -sh build/app/outputs/flutter-apk/app-debug.apk
 
-      - name: Upload APK arm64 (téléphones modernes)
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug-arm64-v8a
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
-          retention-days: 30
-
-      - name: Upload APK armeabi-v7a (anciens téléphones)
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug-armeabi-v7a
-          path: build/app/outputs/flutter-apk/app-armeabi-v7a-debug.apk
+          name: app-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
