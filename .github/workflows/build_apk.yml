@@ -37,12 +37,24 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK (debug)
-        run: flutter build apk --debug --android-skip-build-dependency-validation
+      - name: Build APK split par architecture
+        run: flutter build apk --debug --split-per-abi --android-skip-build-dependency-validation
 
-      - name: Upload APK as artifact
+      - name: Afficher la taille des APKs
+        run: |
+          echo "=== Taille des APKs générés ==="
+          du -sh build/app/outputs/flutter-apk/*.apk
+
+      - name: Upload APK arm64 (téléphones modernes)
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: app-debug-arm64-v8a
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
+          retention-days: 30
+
+      - name: Upload APK armeabi-v7a (anciens téléphones)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-armeabi-v7a
+          path: build/app/outputs/flutter-apk/app-armeabi-v7a-debug.apk
           retention-days: 30
