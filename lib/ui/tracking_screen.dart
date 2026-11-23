@@ -7,14 +7,12 @@ import 'package:flutter/services.dart';
 import '../core/highlighting_controller.dart';
 import '../audio/quran_timing_service.dart';
 import '../audio/quran_audio_service.dart';
-import '../audio/quran_download_service.dart';
 import '../core/platform_utils.dart';
 import 'widgets/dialogs/dialog_service.dart';
 import '../core/app_state.dart';
 import 'widgets/mic_bar.dart';
 import '../mushaf/mushaf_view.dart';
 import '../verse_list/verse_list_view.dart';
-import '../maglis/maglis_controller.dart';
 
 /// Main interactive screen for real-time recitation tracking and reading.
 /// Supports high-performance vector Mushaf and dedicated Verse List modes.
@@ -83,11 +81,8 @@ class _TrackingScreenState extends State<TrackingScreen>
     ]);
     _bottomBarListenable = Listenable.merge([
       app.themeNotifier,
-      app.languageNotifier,
       app.blurModeNotifier,
-      app.modeNotifier,
       _surahNotifier,
-      MaglisController.instance.sessionListenable,
     ]);
     if (!PlatformCapabilities.isWeb) {
       WidgetsBinding.instance.addObserver(this);
@@ -407,12 +402,10 @@ class _TrackingScreenState extends State<TrackingScreen>
                               final effectiveSurah = _effectiveSurah;
                               final surahName =
                                   _getSurahName(effectiveSurah, app.isArabic);
-                              final maglis = MaglisController.instance;
-                              final int peerCount = maglis.participantCount;
-
                               return BottomActionBar(
                                 key: const ValueKey('unified_dock_bar'),
                                 isRecording: widget.isRecording,
+                                isVoiceSearching: widget.isVoiceSearching,
                                 isLoadingEngine: widget.isLoadingEngine,
                                 c: c,
                                 onMic: () {
@@ -432,52 +425,17 @@ class _TrackingScreenState extends State<TrackingScreen>
                                     app.dismissBanner();
                                   }
                                 },
-                                isTajweed: app.currentMode == AppMode.tajweed,
-                                onToggleTajweed: () {
-                                  final bool newIsTajweed =
-                                      app.currentMode != AppMode.tajweed;
-                                  if (newIsTajweed) {
-                                    app.setMode(AppMode.tajweed);
-                                    widget.controller.setTajweedMode(true);
-                                    app.showTajweedBanner();
-                                  } else {
-                                    app.setMode(AppMode.wordChecker);
-                                    widget.controller.setTajweedMode(false);
-                                    app.dismissTajweedBanner();
+                                onVoiceSearch: () {
+                                  app.dismissBanner();
+                                  if (widget.isRecording) {
+                                    widget.onToggleRecord();
                                   }
+                                  widget.onVoiceSearchToggle();
                                 },
                                 surahName: surahName,
                                 onSurahTap: _showSurahPicker,
                                 onSettingsTap: () {
                                   _showSettingsDialog();
-                                },
-                                isInMaglis: maglis.inSession,
-                                maglisRoomCode: maglis.roomCode,
-                                maglisPeerCount: peerCount,
-                                isRemoteReciting: maglis.isRemoteReciting,
-                                onMaglisTap: () async {
-                                  app.recordMaglisTap();
-                                  if (!app.hasSeenMaglisExplanation) {
-                                    await DialogService.showMaglisExplanation(context);
-                                    if (context.mounted) {
-                                      DialogService.showMaglisEntry(context);
-                                    }
-                                  } else {
-                                    DialogService.showMaglisEntry(context);
-                                  }
-                                },
-                                onMaglisExitTap: () async {
-                                  if (widget.isRecording) {
-                                    widget.onToggleRecord();
-                                  }
-                                  app.exitMaglisSession();
-                                  await maglis.leaveSession();
-                                  app.showBanner(AppBannerInfo(
-                                    id: 'maglis_left',
-                                    messageAr: 'تمت مغادرة المجلس بنجاح',
-                                    messageEn: 'Left Maglis session',
-                                    icon: Icons.exit_to_app_rounded,
-                                  ));
                                 },
                               );
                             },
@@ -510,100 +468,9 @@ class _TrackingScreenState extends State<TrackingScreen>
                       builder: (context, activeBanner, _) =>
                           _buildModernBottomBanner(c, app, bottom, activeBanner),
                     ),
-
-                    // Floating Download Progress Pill (appears when download dialog is minimized)
-                    _buildMinimizedDownloadPill(c, app, bottom),
                   ],
                 );
               },
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Floating pill shown when Quran audio download is minimized.
-  Widget _buildMinimizedDownloadPill(
-      ThemeColors c, AppState app, double bottom) {
-    return ListenableBuilder(
-      listenable: Listenable.merge([
-        QuranDownloadService.instance.isDownloading,
-        QuranDownloadService.instance.isMinimized,
-        QuranDownloadService.instance.progress,
-      ]),
-      builder: (context, _) {
-        final isDownloading = QuranDownloadService.instance.isDownloading.value;
-        final isMinimized = QuranDownloadService.instance.isMinimized.value;
-        if (!isDownloading || !isMinimized) {
-          return const SizedBox.shrink();
-        }
-
-        final progress = QuranDownloadService.instance.progress.value;
-        final percent = (progress * 100).toInt();
-        final isAr = app.isArabic;
-        final isDark = app.isDarkMode;
-
-        return Positioned(
-          bottom: bottom + 12,
-          left: 16,
-          right: 16,
-          child: Center(
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(24),
-                onTap: () => AudioDownloadDialog.show(context),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: c.primary.withValues(alpha: isDark ? 0.40 : 0.25),
-                      width: 1.2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black
-                            .withValues(alpha: isDark ? 0.35 : 0.12),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                          value: progress.clamp(0.0, 1.0),
-                          valueColor: AlwaysStoppedAnimation<Color>(c.primary),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        isAr
-                            ? 'جاري تحميل التلاوة: ${QuranTypography.toArabicDigits(percent)}٪'
-                            : 'Downloading Audio: $percent%',
-                        style: TextStyle(
-                          fontFamily: 'cairo',
-                          color: c.text,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Icon(Icons.open_in_full_rounded,
-                          size: 14, color: c.muted),
-                    ],
-                  ),
-                ),
-              ),
             ),
           ),
         );

@@ -139,7 +139,7 @@ class QuranApp extends StatelessWidget {
           navigatorKey: QuranApp.navigatorKey,
           debugShowCheckedModeBanner: false,
           navigatorObservers: [AppModalRouteObserver.instance],
-          title: 'Recite Quran - اتلو القران',
+          title: 'اتلو القران',
           theme: ThemeData(
             useMaterial3: true,
             brightness: isDark ? Brightness.dark : Brightness.light,
@@ -711,25 +711,10 @@ class _OrchestratorState extends State<_Orchestrator>
           return;
         }
 
-        if (PlatformCapabilities.isWeb)
+        if (PlatformCapabilities.isWeb) {
           return; // Zero intro / popup interruptions on Web
-        final prefs = await SharedPreferences.getInstance();
-        final hasChosenTheme = prefs.getBool('has_chosen_theme') ?? false;
-        if (!hasChosenTheme && mounted) {
-          await DialogService.showThemeSelection(
-            context,
-            onThemeSelected: () {
-              prefs.setBool('has_chosen_theme', true);
-              Navigator.of(context).pop();
-            },
-          );
-          if (mounted) {
-            await Future<void>.delayed(const Duration(milliseconds: 250));
-            await _checkAndShowAppGuide();
-          }
-        } else {
-          await _checkAndShowAppGuide();
         }
+        await _checkAndShowAppGuide();
       });
     } catch (e) {
       DebugLogger.logSimple('INIT', '❌ Error: $e');

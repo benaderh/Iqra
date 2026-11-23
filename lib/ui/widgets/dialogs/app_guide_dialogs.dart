@@ -122,24 +122,10 @@ class AppGuideDialog extends StatelessWidget {
 
             // 4. Voice Search
             _buildRow(
-              icon: Icons.graphic_eq_rounded,
+              icon: Icons.search_rounded,
               iconColor: const Color(0xFF10B981),
-              title: isAr ? 'البحث الصوتي' : 'Voice Search',
-              text: isAr
-                  ? 'زر داخل قائمة السور للبحث الصوتي عن أي آية بمجرد نطقها.'
-                  : 'Recite any verse inside the Surah list to jump to it instantly.',
-              c: c,
-            ),
-            divider,
-
-            // 5. Quran Maglis
-            _buildRow(
-              icon: Icons.groups_rounded,
-              iconColor: const Color(0xFF2563EB),
-              title: isAr ? 'مجلس القرآن' : 'Quran Maglis',
-              text: isAr
-                  ? 'تلاوة جماعية مباشرة بمكالمة صوتية وتصفح مشترك عبر رمز (5 أرقام).'
-                  : 'Recite together live with open voice call & synced pages via a 5-digit code.',
+              title: 'البحث الصوتي',
+              text: 'اضغط زر البحث الصوتي بالأسفل أو داخل قائمة السور للبحث عن أي آية بمجرد نطقها.',
               c: c,
             ),
           ],

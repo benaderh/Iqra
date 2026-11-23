@@ -73,9 +73,8 @@ class AppBannerInfo {
 
 class AppState extends ChangeNotifier {
   AppState._() {
-    // Initialize default language from the device's OS setting.
-    final deviceLang = ui.PlatformDispatcher.instance.locale.languageCode;
-    _lang = (deviceLang == 'ar') ? AppLanguage.ar : AppLanguage.en;
+    // Always use Arabic — single-language app.
+    _lang = AppLanguage.ar;
     languageNotifier = ValueNotifier<AppLanguage>(_lang);
     themeNotifier = ValueNotifier<AppTheme>(_theme);
     HighlightingController.onAutoSavePosition = (surah, ayah) {
@@ -196,20 +195,18 @@ class AppState extends ChangeNotifier {
 
   // ── Theme ──────────────────────────────────────────────────────────────────
 
-  AppTheme _theme = AppTheme.white;
+  AppTheme _theme = AppTheme.black;
   AppTheme get theme => _theme;
-  bool get isDarkMode => _theme == AppTheme.black;
-  bool get isBlack => _theme == AppTheme.black;
-  bool get isWhite => _theme == AppTheme.white;
-  bool get isOled => _theme == AppTheme.black;
+  bool get isDarkMode => true;
+  bool get isBlack => true;
+  bool get isWhite => false;
+  bool get isOled => true;
   bool get isParchment => false;
 
   void setTheme(AppTheme t) async {
-    _theme = t;
+    _theme = AppTheme.black;
     themeNotifier.value = _theme;
     notifyListeners();
-    final prefs = await _getPrefs();
-    await prefs.setString('theme', _theme.name);
   }
 
   // ── Blur Mode ──────────────────────────────────────────────────────────────
@@ -672,15 +669,8 @@ class AppState extends ChangeNotifier {
 
   // ── Colors ─────────────────────────────────────────────────────────────────
 
-  /// Returns the active color palette based on the current theme.
-  ThemeColors get colors {
-    switch (_theme) {
-      case AppTheme.white:
-        return _whiteColors;
-      case AppTheme.black:
-        return _blackColors;
-    }
-  }
+  /// Returns the active color palette (single theme: Black / OLED).
+  ThemeColors get colors => _blackColors;
 
   // ──────────────────────────────────────────────────────────────────────────
   // WHITE THEME — Warm Natural Linen (Zero Glare, Eye-Comfortable)
@@ -779,26 +769,9 @@ class AppState extends ChangeNotifier {
     try {
       final prefs = await _getPrefs();
 
-      if (prefs.containsKey('lang')) {
-        _lang =
-            prefs.getString('lang') == 'en' ? AppLanguage.en : AppLanguage.ar;
-      }
-      if (prefs.containsKey('theme')) {
-        final themeStr = prefs.getString('theme');
-        try {
-          _theme = AppTheme.values.firstWhere((t) => t.name == themeStr);
-        } catch (_) {
-          _theme =
-              (themeStr == 'dark' || themeStr == 'oled' || themeStr == 'black')
-                  ? AppTheme.black
-                  : AppTheme.white;
-        }
-      } else {
-        final brightness =
-            WidgetsBinding.instance.platformDispatcher.platformBrightness;
-        _theme =
-            brightness == Brightness.dark ? AppTheme.black : AppTheme.white;
-      }
+      // Single language: Arabic. Single theme: Black.
+      _lang = AppLanguage.ar;
+      _theme = AppTheme.black;
       isBlurMode = prefs.getBool('blurMode') ?? false;
       blurModeNotifier.value = isBlurMode;
       isTajweedColoring = prefs.getBool('tajweedColoring') ?? false;
