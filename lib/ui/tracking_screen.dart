@@ -345,17 +345,6 @@ class _TrackingScreenState extends State<TrackingScreen>
     );
   }
 
-  void _showSettingsDialog() {
-    DialogService.showSettings(context);
-  }
-
-  void _showSpeedSelectionDialog() {
-    DialogService.showSpeedSelection(
-      context,
-      onSpeedSelected: () => AppState.instance.setHasChosenAutoScrollSpeed(true),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
@@ -434,33 +423,12 @@ class _TrackingScreenState extends State<TrackingScreen>
                                 },
                                 surahName: surahName,
                                 onSurahTap: _showSurahPicker,
-                                onSettingsTap: () {
-                                  _showSettingsDialog();
-                                },
                               );
                             },
                           ),
                         ),
                       ),
                     ),
-
-                    // Auto-Scroll / Pause button in Verse List mode (occupies the exact spot as Page Number in Mushaf layout)
-                    if (!app.isMushafMode && !widget.isRecording && !widget.isVoiceSearching)
-                      AnimatedPositioned(
-                        duration: const Duration(milliseconds: 280),
-                        curve: Curves.easeOutCubic,
-                        left: pageLabelLeft - 13.0,
-                        bottom: isAutoScrolling ? (bottom + 18.0 - 13.0) : (bottom + 60.0 - 13.0),
-                        child: _AutoScrollFloatingButton(
-                          isAutoScrolling: isAutoScrolling,
-                          c: c,
-                          app: app,
-                          onTap: () {
-                            _verseListKey.currentState?.toggleAutoScroll();
-                          },
-                          onLongPress: _showSpeedSelectionDialog,
-                        ),
-                      ),
 
                     // Modern Floating Slide-Up Banner (Scoped listener prevents full screen rebuilds)
                     ValueListenableBuilder<AppBannerInfo?>(
@@ -624,100 +592,6 @@ class _TrackingScreenState extends State<TrackingScreen>
         onAutoScrollChanged: (scrolling) {
           _isAutoScrolling.value = scrolling;
         },
-      ),
-    );
-  }
-}
-
-/// Floating tactical button occupying the exact spot where the Mushaf page number sits.
-/// - In idle state: displays speed label (e.g. 1.0x) with scroll chevron; tap starts scroll, hold sets speed.
-/// - During auto-scroll: transforms smoothly into a Pause button; tap stops auto-scroll.
-class _AutoScrollFloatingButton extends StatefulWidget {
-  final bool isAutoScrolling;
-  final ThemeColors c;
-  final AppState app;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-
-  const _AutoScrollFloatingButton({
-    required this.isAutoScrolling,
-    required this.c,
-    required this.app,
-    required this.onTap,
-    required this.onLongPress,
-  });
-
-  @override
-  State<_AutoScrollFloatingButton> createState() =>
-      _AutoScrollFloatingButtonState();
-}
-
-class _AutoScrollFloatingButtonState extends State<_AutoScrollFloatingButton> {
-  bool _isDown = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = widget.app.isDarkMode;
-    final isScroll = widget.isAutoScrolling;
-
-    // Matches the styling and color semantics of the mic bar buttons (like community/maglis button)
-    final Color bgColor = isScroll
-        ? const Color(0xFF10B981).withValues(alpha: isDark ? 0.22 : 0.15)
-        : (isDark ? const Color(0xFF1B2430) : const Color(0xFFF1F5F9));
-
-    final Color borderColor = isScroll
-        ? const Color(0xFF10B981).withValues(alpha: isDark ? 0.75 : 0.60)
-        : (isDark
-            ? Colors.white.withValues(alpha: 0.10)
-            : Colors.black.withValues(alpha: 0.08));
-
-    final Color iconColor = isScroll
-        ? (isDark ? const Color(0xFF10B981) : const Color(0xFF059699))
-        : (isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B));
-
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isDown = true),
-      onTapUp: (_) => setState(() => _isDown = false),
-      onTapCancel: () => setState(() => _isDown = false),
-      onTap: () {
-        widget.onTap();
-      },
-      onLongPress: () {
-        widget.onLongPress();
-      },
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 56,
-        height: 56,
-        color: Colors.transparent,
-        alignment: Alignment.center,
-        child: AnimatedScale(
-          scale: _isDown ? 0.90 : 1.0,
-          duration: const Duration(milliseconds: 100),
-          curve: Curves.easeOutCubic,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: borderColor,
-                width: isScroll ? 1.2 : 1.0,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              isScroll
-                  ? Icons.pause_rounded
-                  : Icons.keyboard_double_arrow_down_rounded,
-              size: 16.5,
-              color: iconColor,
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -16,7 +16,6 @@ class BottomActionBar extends StatelessWidget {
   final VoidCallback onVoiceSearch;
   final String surahName;
   final VoidCallback onSurahTap;
-  final VoidCallback onSettingsTap;
 
   const BottomActionBar({
     super.key,
@@ -30,7 +29,6 @@ class BottomActionBar extends StatelessWidget {
     required this.onVoiceSearch,
     required this.surahName,
     required this.onSurahTap,
-    required this.onSettingsTap,
   });
 
   MicBarMode get mode => isRecording ? MicBarMode.recording : MicBarMode.normal;
@@ -287,22 +285,6 @@ class BottomActionBar extends StatelessWidget {
                                                 height: btnHeight,
                                                 dockHeight: dockHeight,
                                               ),
-                                            ),
-                                            SizedBox(width: gap),
-                                            // Settings
-                                            _buildActionButton(
-                                              child: Icon(
-                                                Icons.tune_rounded,
-                                                size: 18.5,
-                                                color: _btnFg(isDark),
-                                              ),
-                                              tooltip: 'الإعدادات',
-                                              isActive: false,
-                                              isDark: isDark,
-                                              width: stdBtnWidth,
-                                              height: btnHeight,
-                                              dockHeight: dockHeight,
-                                              onTap: onSettingsTap,
                                             ),
                                           ],
                                         ),
@@ -784,6 +766,7 @@ class _TapScale extends StatefulWidget {
   final VoidCallback onTap;
 
   const _TapScale({
+    super.key,
     required this.child,
     required this.onTap,
   });
@@ -793,48 +776,20 @@ class _TapScale extends StatefulWidget {
 }
 
 class _TapScaleState extends State<_TapScale> {
-  final ValueNotifier<bool> _down = ValueNotifier<bool>(false);
-  Offset? _downPos;
-
-  @override
-  void dispose() {
-    _down.dispose();
-    super.dispose();
-  }
+  bool _isDown = false;
 
   @override
   Widget build(BuildContext context) {
-    return Listener(
+    return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onPointerDown: (event) {
-        _downPos = event.position;
-        _down.value = true;
-      },
-      onPointerUp: (event) {
-        final bool wasDown = _down.value;
-        _down.value = false;
-        if (wasDown && _downPos != null) {
-          // 36px forgiving radius so natural thumb roll or light tap never cancels
-          if ((event.position - _downPos!).distance <= 36.0) {
-            widget.onTap();
-          }
-        }
-        _downPos = null;
-      },
-      onPointerCancel: (_) {
-        _down.value = false;
-        _downPos = null;
-      },
-      child: ValueListenableBuilder<bool>(
-        valueListenable: _down,
-        builder: (context, isDown, child) {
-          return AnimatedScale(
-            scale: isDown ? 0.94 : 1.0,
-            duration: const Duration(milliseconds: 60),
-            curve: Curves.easeOutCubic,
-            child: child,
-          );
-        },
+      onTapDown: (_) => setState(() => _isDown = true),
+      onTapUp: (_) => setState(() => _isDown = false),
+      onTapCancel: () => setState(() => _isDown = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _isDown ? 0.94 : 1.0,
+        duration: const Duration(milliseconds: 60),
+        curve: Curves.easeOutCubic,
         child: widget.child,
       ),
     );

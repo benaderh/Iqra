@@ -27,6 +27,13 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Download ONNX model from Hugging Face
+        run: |
+          mkdir -p assets/model
+          curl -L "https://huggingface.co/Tidzo/darten-zipformer-quran/resolve/main/zipformer_p_arabic_v3.int8.onnx" \
+            -o assets/model/zipformer_p_arabic_v3.int8.onnx
+          echo "Model size: $(du -sh assets/model/zipformer_p_arabic_v3.int8.onnx)"
+
       - name: Install dependencies
         run: flutter pub get
 

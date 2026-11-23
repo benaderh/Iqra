@@ -220,11 +220,8 @@ class AppState extends ChangeNotifier {
   static bool Function()? isMaglisSessionActive;
 
   /// Whether blur (memorization concealing) should actively conceal unrecited words.
-  /// Strictly active inside an active recitation session (local recording or remote Maglis session).
   bool isBlurEffective({bool isRecording = false}) {
-    final bool sessionActive =
-        isRecording || (isMaglisSessionActive?.call() ?? false);
-    return isBlurMode && sessionActive;
+    return isBlurMode;
   }
 
   void toggleBlurMode() async {

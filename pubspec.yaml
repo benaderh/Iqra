@@ -57,6 +57,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/model/
     - assets/icon/app_icon.png
     - assets/pages.tar.xz
     - assets/audio_timings/husary/

@@ -714,19 +714,10 @@ class _OrchestratorState extends State<_Orchestrator>
         if (PlatformCapabilities.isWeb) {
           return; // Zero intro / popup interruptions on Web
         }
-        await _checkAndShowAppGuide();
       });
     } catch (e) {
       DebugLogger.logSimple('INIT', '❌ Error: $e');
       if (mounted) setState(() => _initStatus = 'Error: $e');
-    }
-  }
-
-  Future<void> _checkAndShowAppGuide() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeen = prefs.getBool('has_seen_app_guide_v1') ?? false;
-    if (!hasSeen && mounted) {
-      DialogService.showAppGuide(context);
     }
   }
 
