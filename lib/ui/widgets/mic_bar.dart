@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../core/app_state.dart';
+import '../../core/platform_utils.dart';
 
 enum MicBarMode { recording, normal }
 
