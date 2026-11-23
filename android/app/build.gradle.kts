@@ -60,8 +60,8 @@ android {
                 keystoreProperties.containsKey("storeFile")) {
                 signingConfig = signingConfigs.getByName("release")
             } else {
-                println("WARNING: key.properties or signing keys missing. Building an UNSIGNED release.")
-                signingConfig = null
+                println("key.properties missing. Signing release with debug keystore for easy installation.")
+                signingConfig = signingConfigs.getByName("debug")
             }
 
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

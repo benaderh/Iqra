@@ -37,6 +37,7 @@ import 'maglis/maglis_core.dart';
 import 'core/maglis_link_service.dart';
 import 'core/app_audio_processor.dart';
 import 'core/platform_utils.dart';
+import 'core/asr_model_manager.dart';
 import 'mushaf/web/mushaf_web_storage.dart'
     if (dart.library.js_interop) 'mushaf/web/mushaf_web_storage_web.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -722,10 +723,11 @@ class _OrchestratorState extends State<_Orchestrator>
   }
 
   /// Silently pre-warms the ASR neural engine in the background on native platforms
-  /// only after Mushaf data is ready, preventing the 72.7 MB ONNX copy/init from
-  /// contending with first-run extraction.
-  void _scheduleEnginePrewarm() {
+  /// only after Mushaf data is ready and the model has been downloaded.
+  void _scheduleEnginePrewarm() async {
     if (PlatformCapabilities.isWeb || _engine.isInitialized) return;
+    final bool isReady = await AsrModelManager.instance.isModelReady();
+    if (!isReady) return; // Do not attempt to prewarm if model is not yet downloaded
     final int epoch = ++_prewarmEpoch;
     _enginePrewarmTimer?.cancel();
     _enginePrewarmTimer = null;
@@ -762,7 +764,8 @@ class _OrchestratorState extends State<_Orchestrator>
   }
 
   /// Ensures the ASR engine is initialized.
-  /// On Web, prompts for user bandwidth consent if the ~72MB model is not yet downloaded.
+  /// If the ~72MB model is not yet downloaded, prompts the user and streams
+  /// the download with live progress before initializing the engine.
   Future<bool> _ensureEngineReady() async {
     _cancelEnginePrewarm();
 
@@ -773,6 +776,31 @@ class _OrchestratorState extends State<_Orchestrator>
       if (!isCached && mounted) {
         final bool? proceed = await DialogService.showModelDownload(context);
         if (proceed != true) {
+          return false;
+        }
+      }
+    } else {
+      final bool isReady = await AsrModelManager.instance.isModelReady();
+      if (!isReady && mounted) {
+        final bool? proceed = await DialogService.showModelDownload(context);
+        if (proceed != true) {
+          return false;
+        }
+        if (mounted) setState(() => _isEngineLoading = true);
+        AppState.instance.startModelDownload();
+        final bool ok = await AsrModelManager.instance.downloadModel();
+        if (!ok) {
+          if (mounted) {
+            setState(() => _isEngineLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'تعذر تحميل نموذج الصوت. يرجى التحقق من اتصال الإنترنت.',
+                  textDirection: TextDirection.rtl,
+                ),
+              ),
+            );
+          }
           return false;
         }
       }

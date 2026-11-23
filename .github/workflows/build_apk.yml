@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-apk:
-    name: Build APK (single, online mode)
+    name: Build Release APKs (Online AI Model Download)
     runs-on: ubuntu-latest
 
     steps:
@@ -27,27 +27,23 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Download ONNX model from Hugging Face
-        run: |
-          mkdir -p assets/model
-          curl -L "https://huggingface.co/Tidzo/darten-zipformer-quran/resolve/main/zipformer_p_arabic_v3.int8.onnx" \
-            -o assets/model/zipformer_p_arabic_v3.int8.onnx
-          echo "Model size: $(du -sh assets/model/zipformer_p_arabic_v3.int8.onnx)"
-
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build APK (single universal)
-        run: flutter build apk --debug --android-skip-build-dependency-validation
+      - name: Build Split Release APKs (~30 MB)
+        run: flutter build apk --release --split-per-abi --android-skip-build-dependency-validation
 
-      - name: Afficher la taille de l'APK
+      - name: Build Universal Release APK
+        run: flutter build apk --release --android-skip-build-dependency-validation
+
+      - name: Afficher la taille des APKs
         run: |
-          echo "=== Taille APK ==="
-          du -sh build/app/outputs/flutter-apk/app-debug.apk
+          echo "=== Tailles des APKs générés ==="
+          ls -lh build/app/outputs/flutter-apk/app-*.apk
 
-      - name: Upload APK
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: iqra-release-apks
+          path: build/app/outputs/flutter-apk/app-*.apk
           retention-days: 30
