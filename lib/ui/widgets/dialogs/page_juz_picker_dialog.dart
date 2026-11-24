@@ -129,11 +129,11 @@ class _PagePickerDialogState extends State<PagePickerDialog> {
       title: 'الانتقال إلى صفحة',
       primaryAction: AppDialogActionItem(
         label: 'انتقال',
-        onTap: _submit,
+        onPressed: _submit,
       ),
       secondaryAction: AppDialogActionItem(
         label: 'إلغاء',
-        onTap: () {
+        onPressed: () {
           if (Navigator.of(context).canPop()) {
             Navigator.pop(context);
           }
