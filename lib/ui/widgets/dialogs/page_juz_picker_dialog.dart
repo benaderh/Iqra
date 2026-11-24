@@ -127,66 +127,49 @@ class _PagePickerDialogState extends State<PagePickerDialog> {
 
     return AppDialog(
       title: 'الانتقال إلى صفحة',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _controller,
-            keyboardType: TextInputType.number,
-            autofocus: true,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: c.text,
+      primaryAction: AppDialogActionItem(
+        label: 'انتقال',
+        onTap: _submit,
+      ),
+      secondaryAction: AppDialogActionItem(
+        label: 'إلغاء',
+        onTap: () {
+          if (Navigator.of(context).canPop()) {
+            Navigator.pop(context);
+          }
+        },
+      ),
+      content: TextField(
+        controller: _controller,
+        keyboardType: TextInputType.number,
+        autofocus: true,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: c.text,
+        ),
+        decoration: InputDecoration(
+          hintText: '1 - 604',
+          hintStyle: TextStyle(color: c.muted),
+          errorText: _errorText,
+          filled: true,
+          fillColor: isDark ? const Color(0xFF1B2430) : const Color(0xFFF1F5F9),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: isDark ? Colors.white12 : Colors.black12,
             ),
-            decoration: InputDecoration(
-              hintText: '1 - 604',
-              hintStyle: TextStyle(color: c.muted),
-              errorText: _errorText,
-              filled: true,
-              fillColor: isDark ? const Color(0xFF1B2430) : const Color(0xFFF1F5F9),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(
-                  color: isDark ? Colors.white12 : Colors.black12,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: Color(0xFF10B981),
-                  width: 1.5,
-                ),
-              ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: Color(0xFF10B981),
+              width: 1.5,
             ),
-            onSubmitted: (_) => _submit(),
           ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  text: 'إلغاء',
-                  variant: AppButtonVariant.secondary,
-                  onTap: () {
-                    if (Navigator.of(context).canPop()) {
-                      Navigator.pop(context);
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: AppButton(
-                  text: 'انتقال',
-                  variant: AppButtonVariant.primary,
-                  onTap: _submit,
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
+        onSubmitted: (_) => _submit(),
       ),
     );
   }
