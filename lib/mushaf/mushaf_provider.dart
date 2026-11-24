@@ -384,6 +384,8 @@ class MushafProvider {
       if (pageBytes != null && pageBytes.isNotEmpty) {
         final page = await _engine!.loadPageAsync(pageBytes);
         page.hide(Sel.kind(QvpKind.ayahMarkOrnament));
+        page.hide(Sel.kind(QvpKind.ayahNumber));
+        page.hide(Sel.kind(QvpKind.pageNumber));
         final currentInkColor = AppState.instance.colors.text;
         page.setDefaultColor(currentInkColor);
 

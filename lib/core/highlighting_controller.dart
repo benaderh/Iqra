@@ -1534,24 +1534,8 @@ abstract final class QuranTypography {
     return i.toString().split('').map((e) => digits[int.parse(e)]).join('');
   });
 
-  /// Converts an integer, double, or numeric string to Eastern Arabic numeral glyphs (e.g. 1 -> '١', '1.5' -> '١.٥').
-  static String toArabicDigits(Object value) {
-    if (value is int && value >= 0 && value < _arabicDigitsCache.length) {
-      return _arabicDigitsCache[value];
-    }
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    final s = value.toString();
-    final buffer = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      final code = s.codeUnitAt(i);
-      if (code >= 48 && code <= 57) {
-        buffer.write(digits[code - 48]);
-      } else {
-        buffer.writeCharCode(code);
-      }
-    }
-    return buffer.toString();
-  }
+  /// Formats digits with Arabic numerals (1 2 3 4 5 6 7 8 9 0).
+  static String toArabicDigits(Object value) => value.toString();
 
   /// Converts any Eastern Arabic numeral glyphs (٠-٩) in [input] to standard ASCII digits (0-9).
   static String toWesternDigits(String input) {
@@ -1567,13 +1551,7 @@ abstract final class QuranTypography {
   /// converts to Eastern Arabic digits (٠-٩) if [isArabic] is true, otherwise standard ASCII.
   static String formatDigits(String input, {required bool isArabic}) {
     if (input.isEmpty) return input;
-    final normalized = toWesternDigits(input);
-    if (!isArabic) return normalized;
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return normalized.split('').map((char) {
-      final n = int.tryParse(char);
-      return n != null ? digits[n] : char;
-    }).join('');
+    return toWesternDigits(input);
   }
 }
 

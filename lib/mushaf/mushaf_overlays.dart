@@ -468,8 +468,47 @@ class MushafOverlays {
         _ringPaint.color = ringColor;
         _ringPaint.strokeWidth = 1.0;
         canvas.drawCircle(center, customR, _ringPaint);
+
+        // Paint Ayah number in Arabic numerals: 1 2 3 4 5 6 7 8 9 0
+        _paintAyahNumber(canvas, center, customR, m.ayah, app.colors.text);
       }
     }
+  }
+
+  /// Paints the Ayah number using standard Arabic digits (1 2 3 4 5 6 7 8 9 0)
+  /// centered precisely inside the medallion ring.
+  static void _paintAyahNumber(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    int ayah,
+    Color textColor,
+  ) {
+    final String text = '$ayah';
+    final double fontSize = text.length <= 1
+        ? (radius * 1.15)
+        : (text.length == 2 ? (radius * 0.92) : (radius * 0.72));
+
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          fontFamily: 'cairo',
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
+          color: textColor,
+          height: 1.0,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    )..layout();
+
+    final textOffset = Offset(
+      center.dx - (tp.width / 2.0),
+      center.dy - (tp.height / 2.0),
+    );
+    tp.paint(canvas, textOffset);
   }
 
   /// Single-pass overlay: Paints onboarding Tajweed tutorial tooltip ("اضغط هنا") beneath yellow words.

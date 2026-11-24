@@ -1035,17 +1035,6 @@ class _MushafViewState extends State<MushafView>
         ? const Color(0xFF94A3B8).withValues(alpha: 0.30)
         : const Color(0xFF64748B).withValues(alpha: 0.35);
 
-    MushafOverlays.paintAyahMarks(
-      canvas,
-      page,
-      layout,
-      app: app,
-      surfaceColor: c.surface,
-      goldColor: c.gold,
-      neutralRingColor: neutralRingColor,
-      paintNeutral: true,
-      paintActive: false,
-    );
   }
 
   void _paintOverlay(
@@ -1053,6 +1042,10 @@ class _MushafViewState extends State<MushafView>
     if (page.isDisposed) return;
     final app = AppState.instance;
     final c = app.colors;
+    final isDark = app.isDarkMode;
+    final neutralRingColor = isDark
+        ? const Color(0xFF94A3B8).withValues(alpha: 0.30)
+        : const Color(0xFF64748B).withValues(alpha: 0.35);
 
     MushafOverlays.paintWordColorHighlights(
       canvas,
@@ -1070,8 +1063,9 @@ class _MushafViewState extends State<MushafView>
       app: app,
       surfaceColor: c.surface,
       goldColor: c.gold,
+      neutralRingColor: neutralRingColor,
       controller: widget.controller,
-      paintNeutral: false,
+      paintNeutral: true,
       paintActive: true,
     );
 
@@ -1202,8 +1196,8 @@ class _MushafViewState extends State<MushafView>
                           final int page =
                               currentPage > 0 ? currentPage : _currentPage;
                           return Text(
-                            QuranTypography.toArabicDigits(page),
-                            textDirection: TextDirection.rtl,
+                            '$page',
+                            textDirection: TextDirection.ltr,
                             textScaler: TextScaler.noScaling,
                             style: TextStyle(
                               fontFamily: 'cairo',

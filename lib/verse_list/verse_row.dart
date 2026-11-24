@@ -40,8 +40,7 @@ class VerseRow extends StatefulWidget {
   });
 
   /// Converts an integer to Eastern Arabic numeral glyphs (e.g. 1 -> '١').
-  static String toArabicDigits(Object number) =>
-      QuranTypography.toArabicDigits(number);
+  static String toArabicDigits(Object number) => number.toString();
 
   /// Checks if audio is currently actively playing or buffering on this Ayah.
   static bool isAyahAudioActive({
@@ -734,11 +733,11 @@ class _VerseRowState extends State<VerseRow> {
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                              QuranTypography.toArabicDigits(widget.verse.ayah),
+                              '${widget.verse.ayah}',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontFamily: QuranTypography.quranWordsFont,
-                                fontSize: 21.5,
+                                fontFamily: 'cairo',
+                                fontSize: 16.0,
                                 fontWeight: FontWeight.bold,
                                 height: 1.0,
                                 color: isActive
