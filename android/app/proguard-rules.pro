@@ -20,3 +20,7 @@
 -keep class org.webrtc.** { *; }
 -keep class org.jni_zero.** { *; }
 -dontwarn org.jni_zero.JniZeroJni
+
+# Audio & Media plugins
+-keep class com.ryanheise.** { *; }
+-dontwarn com.ryanheise.**

@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-apk:
-    name: Build Release APKs (Online AI Model Download)
+    name: Build arm64 Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -30,20 +30,23 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Split Release APKs (~30 MB)
-        run: flutter build apk --release --split-per-abi --android-skip-build-dependency-validation
-
-      - name: Build Universal Release APK
-        run: flutter build apk --release --android-skip-build-dependency-validation
-
-      - name: Afficher la taille des APKs
+      - name: Build arm64 Release APK (Optimized & Obfuscated)
         run: |
-          echo "=== Tailles des APKs générés ==="
-          ls -lh build/app/outputs/flutter-apk/app-*.apk
+          flutter build apk --release \
+            --target-platform android-arm64 \
+            --split-per-abi \
+            --obfuscate \
+            --split-debug-info=build/app/outputs/symbols \
+            --android-skip-build-dependency-validation
 
-      - name: Upload APKs
+      - name: Afficher la taille de l'APK
+        run: |
+          echo "=== Taille de l'APK généré ==="
+          ls -lh build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: iqra-release-apks
-          path: build/app/outputs/flutter-apk/app-*.apk
+          name: app-arm64-v8a-release
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
           retention-days: 30

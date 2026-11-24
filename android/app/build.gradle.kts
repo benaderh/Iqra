@@ -64,6 +64,8 @@ android {
                 signingConfig = signingConfigs.getByName("debug")
             }
 
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -77,7 +79,7 @@ android {
     }
 
     androidResources {
-        noCompress += listOf("onnx", "txt", "json", "npy")
+        noCompress += listOf("onnx", "npy")
     }
 }
 
