@@ -156,7 +156,7 @@ class _ExternalMushafViewState extends State<ExternalMushafView> {
             ),
             const SizedBox(height: 8),
             Text(
-              'لم يتم العثور على صورة الصفحة في\n/storage/emulated/0/QuranHB/',
+              'لم يتم العثور على صورة الصفحة في\n/storage/emulated/0/QuranHW/',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'cairo',

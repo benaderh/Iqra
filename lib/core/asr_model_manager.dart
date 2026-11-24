@@ -21,14 +21,14 @@ class AsrModelManager {
   static const int expectedTotalBytes = 72705392; // ~72.7 MB
 
   static const List<String> externalModelPaths = [
-    '/storage/emulated/0/QuranHB/zipformer_p_arabic_v3.int8.onnx',
-    '/storage/emulated/0/QuranHB/v2_zipformer_zipformer_p_arabic_v3.int8.onnx',
     '/storage/emulated/0/QuranHW/zipformer_p_arabic_v3.int8.onnx',
     '/storage/emulated/0/QuranHW/v2_zipformer_zipformer_p_arabic_v3.int8.onnx',
-    '/sdcard/QuranHB/zipformer_p_arabic_v3.int8.onnx',
-    '/sdcard/QuranHB/v2_zipformer_zipformer_p_arabic_v3.int8.onnx',
+    '/storage/emulated/0/QuranHB/zipformer_p_arabic_v3.int8.onnx',
+    '/storage/emulated/0/QuranHB/v2_zipformer_zipformer_p_arabic_v3.int8.onnx',
     '/sdcard/QuranHW/zipformer_p_arabic_v3.int8.onnx',
     '/sdcard/QuranHW/v2_zipformer_zipformer_p_arabic_v3.int8.onnx',
+    '/sdcard/QuranHB/zipformer_p_arabic_v3.int8.onnx',
+    '/sdcard/QuranHB/v2_zipformer_zipformer_p_arabic_v3.int8.onnx',
   ];
 
   /// Checks whether the model is in external storage or internal app storage.

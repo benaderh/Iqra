@@ -9,10 +9,10 @@ enum QuranRiwaya { hafs, warsh }
 /// placed manually by the user in `/storage/emulated/0/QuranHB/` or `/storage/emulated/0/QuranHW/`.
 abstract final class QuranImageService {
   static const List<String> basePaths = [
-    '/storage/emulated/0/QuranHB',
     '/storage/emulated/0/QuranHW',
-    '/sdcard/QuranHB',
+    '/storage/emulated/0/QuranHB',
     '/sdcard/QuranHW',
+    '/sdcard/QuranHB',
   ];
 
   static final Map<int, File> _hafsCache = {};
