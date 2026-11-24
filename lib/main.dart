@@ -38,6 +38,7 @@ import 'core/maglis_link_service.dart';
 import 'core/app_audio_processor.dart';
 import 'core/platform_utils.dart';
 import 'core/asr_model_manager.dart';
+import 'mushaf/quran_image_service.dart';
 import 'mushaf/web/mushaf_web_storage.dart'
     if (dart.library.js_interop) 'mushaf/web/mushaf_web_storage_web.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -107,6 +108,9 @@ void main() async {
       }
 
       await AppState.instance.load();
+      if (PlatformCapabilities.isMobile) {
+        unawaited(QuranImageService.ensurePermission());
+      }
       runApp(const QuranApp());
     },
     (error, stack) {

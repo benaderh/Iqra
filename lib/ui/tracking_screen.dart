@@ -64,6 +64,8 @@ class _TrackingScreenState extends State<TrackingScreen>
       GlobalKey<VerseListViewState>();
   final ValueNotifier<bool> _isAutoScrolling = ValueNotifier<bool>(false);
   late final ValueNotifier<int> _surahNotifier;
+  bool _showBars = true;
+  QuranRiwaya _riwaya = QuranRiwaya.hafs;
 
   AppBannerInfo? _lastBanner;
   int? _lastAyah;
@@ -90,6 +92,11 @@ class _TrackingScreenState extends State<TrackingScreen>
     if (!PlatformCapabilities.isWeb) {
       WidgetsBinding.instance.addObserver(this);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      unawaited(QuranImageService.ensurePermission().then((granted) {
+        if (granted && mounted) {
+          setState(() {});
+        }
+      }));
     }
     widget.controller.addListener(_onControllerUpdate);
     widget.controller.activeAyah.addListener(_onActiveAyahChanged);
@@ -387,9 +394,244 @@ class _TrackingScreenState extends State<TrackingScreen>
     );
   }
 
+  void _showTafsirDialog() {
+    final surah = _effectiveSurah;
+    final ayah = widget.controller.activeAyah.value ?? 1;
+    final surahName = _getSurahName(surah, true);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: DialogTokens.barrierColor,
+      builder: (ctx) {
+        final app = AppState.instance;
+        final isDark = app.isDarkMode;
+
+        return AppBottomSheet(
+          maxHeightFactor: 0.65,
+          child: Column(
+            children: [
+              const AppDragHandle(),
+              AppModalHeader(
+                title: 'تفسير سورة $surahName (الآية $ayah)',
+                onClose: () => Navigator.pop(ctx),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1B2430) : const Color(0xFFFFF4CB),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : const Color(0xFFE2C988),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'سورة $surahName - الآية $ayah',
+                          style: const TextStyle(
+                            fontFamily: 'cairo',
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF227E08),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'يمكنك قراءة وتفسير الآيات ومتابعة التلاوة بالضغط على تلاوة أو استخدام الميكروفون للتحقق من الحفظ الذكي.',
+                          style: TextStyle(
+                            fontFamily: 'cairo',
+                            fontSize: 14.5,
+                            height: 1.6,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
+                          textAlign: TextAlign.right,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTopBar(ThemeColors c, AppState app, double topSafe) {
+    final bool isDark = app.isDarkMode;
+    final bool isPlayingAudio = QuranAudioService.instance.isPlaying;
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      top: (_showBars || widget.isRecording) ? topSafe : -70.0,
+      left: 0,
+      right: 0,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 220),
+        opacity: (_showBars || widget.isRecording) ? 1.0 : 0.0,
+        child: IgnorePointer(
+          ignoring: !_showBars && !widget.isRecording,
+          child: Container(
+            height: 38.0,
+            margin: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1D0606).withValues(alpha: isDark ? 0.95 : 0.90),
+              borderRadius: BorderRadius.circular(10.0),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.15),
+                width: 0.8,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: Row(
+                children: [
+                  // 1. Search (btnF)
+                  _buildTopBarItem(
+                    flex: 1,
+                    child: const Icon(Icons.search_rounded, color: Colors.white, size: 19),
+                    tooltip: 'بحث صوتي',
+                    onTap: () {
+                      if (widget.isRecording) widget.onToggleRecord();
+                      widget.onVoiceSearchToggle();
+                    },
+                  ),
+                  _buildTopBarDivider(),
+                  // 2. Warsh (btnW)
+                  _buildTopBarItem(
+                    flex: 2,
+                    label: 'ورش',
+                    isSelected: _riwaya == QuranRiwaya.warsh,
+                    onTap: () {
+                      setState(() {
+                        _riwaya = QuranRiwaya.warsh;
+                      });
+                    },
+                  ),
+                  _buildTopBarDivider(),
+                  // 3. Hafs (btnH)
+                  _buildTopBarItem(
+                    flex: 2,
+                    label: 'حفص',
+                    isSelected: _riwaya == QuranRiwaya.hafs,
+                    onTap: () {
+                      setState(() {
+                        _riwaya = QuranRiwaya.hafs;
+                      });
+                    },
+                  ),
+                  _buildTopBarDivider(),
+                  // 4. Tafsir (btnT)
+                  _buildTopBarItem(
+                    flex: 2,
+                    label: 'تفسير',
+                    onTap: _showTafsirDialog,
+                  ),
+                  _buildTopBarDivider(),
+                  // 5. Tilawa (btnA) - green background like QIqra
+                  _buildTopBarItem(
+                    flex: 2,
+                    label: isPlayingAudio ? 'إيقاف' : 'تلاوة',
+                    bgColor: const Color(0xFF227E08),
+                    isSelected: true,
+                    onTap: () async {
+                      if (isPlayingAudio) {
+                        await QuranAudioService.instance.stop();
+                      } else {
+                        final surah = _effectiveSurah;
+                        final targetAyah = widget.controller.activeAyah.value ?? 1;
+                        await QuranAudioService.instance.playAyah(surah, targetAyah);
+                      }
+                      setState(() {});
+                    },
+                  ),
+                  _buildTopBarDivider(),
+                  // 6. Menu (btnM)
+                  _buildTopBarItem(
+                    flex: 2,
+                    label: 'القائمة',
+                    onTap: () {
+                      DialogService.showSettings(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopBarItem({
+    required int flex,
+    String? label,
+    Widget? child,
+    bool isSelected = false,
+    Color? bgColor,
+    required VoidCallback onTap,
+    String? tooltip,
+  }) {
+    return Expanded(
+      flex: flex,
+      child: Tooltip(
+        message: tooltip ?? label ?? '',
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8.0),
+          child: Container(
+            height: double.infinity,
+            decoration: BoxDecoration(
+              color: bgColor ?? Colors.transparent,
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            alignment: Alignment.center,
+            child: child ??
+                Text(
+                  label ?? '',
+                  style: TextStyle(
+                    fontFamily: 'cairo',
+                    fontSize: 12.5,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected ? Colors.white : const Color(0xFFAEA7A7),
+                  ),
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopBarDivider() {
+    return Container(
+      width: 0.8,
+      height: 18.0,
+      color: Colors.white.withValues(alpha: 0.15),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
+    final top = MediaQuery.paddingOf(context).top;
     final safeLeft = MediaQuery.paddingOf(context).left;
     final double pageLabelLeft = safeLeft + 16.0;
     final app = AppState.instance;
@@ -414,19 +656,27 @@ class _TrackingScreenState extends State<TrackingScreen>
                     // Main Verse Content (Mushaf View or Verse List View - preserved across auto-scroll toggles)
                     if (verseContentChild != null) verseContentChild,
 
+                    // Top Action Bar (Exact QIqra Bar: Search | Warsh | Hafs | Tafsir | Tilawa | Menu)
+                    _buildTopBar(c, app, top),
+
                     // Bottom Action Bar (Unified Glassmorphic Command Dock)
-                    // Disappears during auto-scroll for zero-distraction teleprompter reading!
+                    // Disappears during auto-scroll or on page tap for zero-distraction reading!
                     AnimatedPositioned(
                       duration: const Duration(milliseconds: 280),
                       curve: Curves.easeOutCubic,
-                      bottom: (!app.isMushafMode && isAutoScrolling) ? -90.0 : 0,
+                      bottom: (!app.isMushafMode && isAutoScrolling)
+                          ? -90.0
+                          : ((_showBars || widget.isRecording) ? 0 : -90.0),
                       left: 0,
                       right: 0,
                       child: AnimatedOpacity(
                         duration: const Duration(milliseconds: 220),
-                        opacity: (!app.isMushafMode && isAutoScrolling) ? 0.0 : 1.0,
+                        opacity: (!app.isMushafMode && isAutoScrolling)
+                            ? 0.0
+                            : ((_showBars || widget.isRecording) ? 1.0 : 0.0),
                         child: IgnorePointer(
-                          ignoring: !app.isMushafMode && isAutoScrolling,
+                          ignoring: (!app.isMushafMode && isAutoScrolling) ||
+                              (!_showBars && !widget.isRecording),
                           child: AnimatedBuilder(
                             animation: _bottomBarListenable,
                             builder: (context, _) {
@@ -625,18 +875,33 @@ class _TrackingScreenState extends State<TrackingScreen>
   Widget _buildVerseContent(ThemeColors c, AppState app) {
     if (app.isMushafMode) {
       if (!widget.isRecording &&
-          (QuranImageService.hasExternalImages(riwaya: QuranRiwaya.hafs) ||
+          (QuranImageService.hasExternalImages(riwaya: _riwaya) ||
+              QuranImageService.hasExternalImages(riwaya: QuranRiwaya.hafs) ||
               QuranImageService.hasExternalImages(riwaya: QuranRiwaya.warsh))) {
         return ExternalMushafView(
-          key: const ValueKey('external_mushaf_view'),
+          key: ValueKey('external_mushaf_${_riwaya.name}'),
           controller: widget.controller,
+          riwaya: _riwaya,
+          onPageTap: () {
+            setState(() {
+              _showBars = !_showBars;
+            });
+          },
         );
       }
-      return MushafView(
-        key: const ValueKey('mushaf_view_main'),
-        controller: widget.controller,
-        isRecording: widget.isRecording,
-        showBottomPageNumber: true,
+      return GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          setState(() {
+            _showBars = !_showBars;
+          });
+        },
+        child: MushafView(
+          key: const ValueKey('mushaf_view_main'),
+          controller: widget.controller,
+          isRecording: widget.isRecording,
+          showBottomPageNumber: true,
+        ),
       );
     }
 

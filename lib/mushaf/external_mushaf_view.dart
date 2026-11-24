@@ -135,22 +135,53 @@ class _ExternalMushafViewState extends State<ExternalMushafView> {
       child: Container(
         color: isDark ? Colors.black : const Color(0xFFFAF8F5),
         alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.auto_stories_rounded,
-              size: 48,
+              size: 56,
               color: isDark ? Colors.white24 : Colors.black26,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Text(
               'صفحة $pageNum',
               style: TextStyle(
                 fontFamily: 'cairo',
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white54 : Colors.black54,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'لم يتم العثور على صورة الصفحة في\n/storage/emulated/0/QuranHB/',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'cairo',
+                fontSize: 13,
+                color: isDark ? Colors.white38 : Colors.black45,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final granted = await QuranImageService.ensurePermission();
+                if (granted) {
+                  QuranImageService.scanFolders();
+                  if (mounted) setState(() {});
+                }
+              },
+              icon: const Icon(Icons.folder_open_rounded, size: 18),
+              label: const Text(
+                'منح إذن قراءة الذاكرة',
+                style: TextStyle(fontFamily: 'cairo', fontWeight: FontWeight.bold),
               ),
             ),
           ],
