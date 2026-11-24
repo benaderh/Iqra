@@ -16,6 +16,10 @@ class BottomActionBar extends StatelessWidget {
   final VoidCallback onVoiceSearch;
   final String surahName;
   final VoidCallback onSurahTap;
+  final int pageNumber;
+  final int juzNumber;
+  final VoidCallback? onPageTap;
+  final VoidCallback? onJuzTap;
 
   const BottomActionBar({
     super.key,
@@ -29,6 +33,10 @@ class BottomActionBar extends StatelessWidget {
     required this.onVoiceSearch,
     required this.surahName,
     required this.onSurahTap,
+    this.pageNumber = 1,
+    this.juzNumber = 1,
+    this.onPageTap,
+    this.onJuzTap,
   });
 
   MicBarMode get mode => isRecording ? MicBarMode.recording : MicBarMode.normal;
@@ -60,40 +68,14 @@ class BottomActionBar extends StatelessWidget {
             final double maxW = constraints.maxWidth;
             final bool isNarrow = maxW < 360.0;
 
-            final double dockHeight = isNarrow ? 46.0 : 48.0;
+            final double dockHeight = isNarrow ? 48.0 : 50.0;
             const double dockRadius = 14.0;
             const double hPad = 6.0;
             const double borderW = 1.1;
-            const double rightTuck = 4.0;
             final double btnHeight = isNarrow ? 36.0 : 38.0;
-
-            const double protrusion = 4.5;
-            final double recHeight = dockHeight + (protrusion * 2.0);
-            final double micWidth = isNarrow ? 58.0 : 64.0;
-
-            final double stdBtnWidth = isNarrow ? 38.0 : 42.0;
             final double gap = isNarrow ? 5.0 : 6.0;
 
-            final double normalWidth = math.min(maxW - 20.0, 480.0);
-            final double recordingWidth = hPad +
-                borderW +
-                micWidth +
-                gap +
-                stdBtnWidth +
-                gap +
-                stdBtnWidth +
-                1.0;
-
-            final double targetWidth = switch (mode) {
-              MicBarMode.recording => recordingWidth,
-              MicBarMode.normal => normalWidth,
-            };
-
-            final double rightMargin =
-                math.max(10.0, (maxW - normalWidth) / 2.0);
-
-            final double minNormalActionWidth =
-                (stdBtnWidth * 3.0) + (gap * 3.0) + 68.0;
+            final double targetWidth = math.min(maxW - 16.0, 500.0);
 
             final Color pillBg =
                 isDark ? const Color(0xF40F151D) : const Color(0xFAFFFFFF);
@@ -105,210 +87,62 @@ class BottomActionBar extends StatelessWidget {
                     : Colors.black.withValues(alpha: 0.08));
 
             return Padding(
-              padding: EdgeInsets.only(
-                bottom: 10.0 - protrusion,
-                right: rightMargin,
+              padding: const EdgeInsets.only(
+                bottom: 8.0,
+                right: 8.0,
                 left: 8.0,
               ),
               child: Align(
-                alignment: Alignment.bottomRight,
-                child: SizedBox(
+                alignment: Alignment.bottomCenter,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
                   width: targetWidth,
-                  height: recHeight,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    alignment: Alignment.centerRight,
-                    children: [
-                      // 1. Rectangular-Pill Back Chassis
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
-                        width: targetWidth,
-                        height: dockHeight,
-                        margin: const EdgeInsets.only(right: rightTuck),
-                        padding: const EdgeInsets.only(left: hPad),
-                        decoration: BoxDecoration(
-                          color: pillBg,
-                          borderRadius: BorderRadius.circular(dockRadius),
-                          border: Border.all(
-                            color: pillBorder,
-                            width: borderW,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isRecording
-                                  ? const Color(0xFFF43F5E).withValues(
-                                      alpha: isDark ? 0.22 : 0.14,
-                                    )
-                                  : Colors.black.withValues(
-                                      alpha: isDark ? 0.40 : 0.08,
-                                    ),
-                              blurRadius: 14,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Directionality(
-                          textDirection: TextDirection.rtl,
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: micWidth - rightTuck - borderW,
+                  height: dockHeight,
+                  padding: const EdgeInsets.symmetric(horizontal: hPad),
+                  decoration: BoxDecoration(
+                    color: pillBg,
+                    borderRadius: BorderRadius.circular(dockRadius),
+                    border: Border.all(
+                      color: pillBorder,
+                      width: borderW,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isRecording
+                            ? const Color(0xFFF43F5E).withValues(
+                                alpha: isDark ? 0.22 : 0.14,
+                              )
+                            : Colors.black.withValues(
+                                alpha: isDark ? 0.40 : 0.08,
                               ),
-                              SizedBox(width: gap),
-                              Expanded(
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 160),
-                                  switchInCurve: Curves.easeOutCubic,
-                                  switchOutCurve: Curves.easeInCubic,
-                                  layoutBuilder:
-                                      (currentChild, previousChildren) {
-                                    return Stack(
-                                      clipBehavior: Clip.hardEdge,
-                                      alignment: Alignment.centerRight,
-                                      children: [
-                                        ...previousChildren.map(
-                                          (w) => IgnorePointer(child: w),
-                                        ),
-                                        if (currentChild != null) currentChild,
-                                      ],
-                                    );
-                                  },
-                                  child: switch (mode) {
-                                    // CASE 1: SOLO RECORDING
-                                    MicBarMode.recording =>
-                                      SingleChildScrollView(
-                                        key: const ValueKey('mode_recording'),
-                                        scrollDirection: Axis.horizontal,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            // 2- تلاوة مع إخفاء الكلمات
-                                            _buildActionButton(
-                                              child: Icon(
-                                                isBlur
-                                                    ? Icons
-                                                        .visibility_off_rounded
-                                                    : Icons.visibility_rounded,
-                                                size: 18.5,
-                                                color: _btnFg(
-                                                  isDark,
-                                                  isActive: isBlur,
-                                                ),
-                                              ),
-                                              tooltip: 'تلاوة مع إخفاء الكلمات',
-                                              isActive: isBlur,
-                                              isDark: isDark,
-                                              width: stdBtnWidth,
-                                              height: btnHeight,
-                                              dockHeight: dockHeight,
-                                              onTap: onToggleBlur,
-                                            ),
-                                            SizedBox(width: gap),
-                                            // 3- بحث
-                                            _buildActionButton(
-                                              child: Icon(
-                                                Icons.search_rounded,
-                                                size: 19.5,
-                                                color: _btnFg(
-                                                  isDark,
-                                                  isActive: isVoiceSearching,
-                                                ),
-                                              ),
-                                              tooltip: 'بحث صوتي',
-                                              isActive: isVoiceSearching,
-                                              isDark: isDark,
-                                              width: stdBtnWidth,
-                                              height: btnHeight,
-                                              dockHeight: dockHeight,
-                                              onTap: onVoiceSearch,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
-                                    // CASE 2: NORMAL READING
-                                    MicBarMode.normal =>
-                                      _NonOverflowingActionRow(
-                                        key: const ValueKey('mode_normal'),
-                                        minWidth: minNormalActionWidth,
-                                        child: Row(
-                                          children: [
-                                            // 2- تلاوة مع إخفاء الكلمات
-                                            _buildActionButton(
-                                              child: Icon(
-                                                isBlur
-                                                    ? Icons
-                                                        .visibility_off_rounded
-                                                    : Icons.visibility_rounded,
-                                                size: 18.5,
-                                                color: _btnFg(
-                                                  isDark,
-                                                  isActive: isBlur,
-                                                ),
-                                              ),
-                                              tooltip: 'تلاوة مع إخفاء الكلمات',
-                                              isActive: isBlur,
-                                              isDark: isDark,
-                                              width: stdBtnWidth,
-                                              height: btnHeight,
-                                              dockHeight: dockHeight,
-                                              onTap: onToggleBlur,
-                                            ),
-                                            SizedBox(width: gap),
-                                            // 3- بحث
-                                            _buildActionButton(
-                                              child: Icon(
-                                                Icons.search_rounded,
-                                                size: 19.5,
-                                                color: _btnFg(
-                                                  isDark,
-                                                  isActive: isVoiceSearching,
-                                                ),
-                                              ),
-                                              tooltip: 'بحث صوتي',
-                                              isActive: isVoiceSearching,
-                                              isDark: isDark,
-                                              width: stdBtnWidth,
-                                              height: btnHeight,
-                                              dockHeight: dockHeight,
-                                              onTap: onVoiceSearch,
-                                            ),
-                                            SizedBox(width: gap),
-                                            // Surah Pill
-                                            Expanded(
-                                              child: _buildSurahPill(
-                                                isDark: isDark,
-                                                isNarrow: isNarrow,
-                                                height: btnHeight,
-                                                dockHeight: dockHeight,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // 2. Protruding Hero Record Key (1- تلاوة)
-                      Positioned(
-                        top: 0.0,
-                        bottom: 0.0,
-                        right: 0.0,
-                        child: _buildMicButton(
-                          width: micWidth,
-                          height: recHeight,
-                          isDark: isDark,
-                        ),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
                       ),
                     ],
+                  ),
+                  child: Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: isRecording
+                          ? _buildRecordingRow(
+                              isDark: isDark,
+                              isNarrow: isNarrow,
+                              btnHeight: btnHeight,
+                              dockHeight: dockHeight,
+                              gap: gap,
+                            )
+                          : _buildNormalRow(
+                              isDark: isDark,
+                              isNarrow: isNarrow,
+                              btnHeight: btnHeight,
+                              dockHeight: dockHeight,
+                              gap: gap,
+                            ),
+                    ),
                   ),
                 ),
               ),
@@ -316,6 +150,123 @@ class BottomActionBar extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildNormalRow({
+    required bool isDark,
+    required bool isNarrow,
+    required double btnHeight,
+    required double dockHeight,
+    required double gap,
+  }) {
+    return Row(
+      key: const ValueKey('row_normal_reading'),
+      children: [
+        // 1. Surah Name Button (btnS)
+        Expanded(
+          flex: 3,
+          child: _buildSurahPill(
+            isDark: isDark,
+            isNarrow: isNarrow,
+            height: btnHeight,
+            dockHeight: dockHeight,
+          ),
+        ),
+        SizedBox(width: gap),
+        // 2. Microphone Button (after Surah Name!)
+        _buildMicButton(
+          width: isNarrow ? 44.0 : 48.0,
+          height: btnHeight,
+          isDark: isDark,
+        ),
+        SizedBox(width: gap),
+        // 3. Page Number Button (btnP)
+        _buildPageButton(
+          isDark: isDark,
+          isNarrow: isNarrow,
+          height: btnHeight,
+          dockHeight: dockHeight,
+        ),
+        SizedBox(width: gap),
+        // 4. Juz Number Button (btnJ)
+        _buildJuzButton(
+          isDark: isDark,
+          isNarrow: isNarrow,
+          height: btnHeight,
+          dockHeight: dockHeight,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecordingRow({
+    required bool isDark,
+    required bool isNarrow,
+    required double btnHeight,
+    required double dockHeight,
+    required double gap,
+  }) {
+    final double stdBtnWidth = isNarrow ? 38.0 : 42.0;
+
+    return Row(
+      key: const ValueKey('row_recording'),
+      children: [
+        // 1. Active Red Microphone Stop Button
+        _buildMicButton(
+          width: isNarrow ? 56.0 : 62.0,
+          height: btnHeight,
+          isDark: isDark,
+        ),
+        SizedBox(width: gap),
+        // 2. Hide Words Toggle Button (ONLY visible during recording!)
+        _buildActionButton(
+          child: Icon(
+            isBlur ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+            size: 18.5,
+            color: _btnFg(
+              isDark,
+              isActive: isBlur,
+            ),
+          ),
+          tooltip: 'تلاوة مع إخفاء الكلمات',
+          isActive: isBlur,
+          isDark: isDark,
+          width: stdBtnWidth,
+          height: btnHeight,
+          dockHeight: dockHeight,
+          onTap: onToggleBlur,
+        ),
+        SizedBox(width: gap),
+        // 3. Voice Search Button
+        _buildActionButton(
+          child: Icon(
+            Icons.search_rounded,
+            size: 19.5,
+            color: _btnFg(
+              isDark,
+              isActive: isVoiceSearching,
+            ),
+          ),
+          tooltip: 'بحث صوتي',
+          isActive: isVoiceSearching,
+          isDark: isDark,
+          width: stdBtnWidth,
+          height: btnHeight,
+          dockHeight: dockHeight,
+          onTap: onVoiceSearch,
+        ),
+        SizedBox(width: gap),
+        // 4. Surah Name
+        Expanded(
+          child: _buildSurahPill(
+            isDark: isDark,
+            isNarrow: isNarrow,
+            height: btnHeight,
+            dockHeight: dockHeight,
+          ),
+        ),
+      ],
     );
   }
 
@@ -520,6 +471,88 @@ class BottomActionBar extends StatelessWidget {
                   size: isNarrow ? 15.0 : 16.5,
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageButton({
+    required bool isDark,
+    required bool isNarrow,
+    required double height,
+    required double dockHeight,
+  }) {
+    final Color fgColor = _btnFg(isDark);
+
+    return Tooltip(
+      message: 'الانتقال إلى صفحة',
+      waitDuration: const Duration(milliseconds: 350),
+      child: _TapScale(
+        onTap: onPageTap ?? () {},
+        child: SizedBox(
+          height: dockHeight,
+          child: Center(
+            child: Container(
+              height: height,
+              padding: EdgeInsets.symmetric(horizontal: isNarrow ? 7.0 : 10.0),
+              decoration: BoxDecoration(
+                color: _btnBg(isDark),
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border.all(color: _btnBorder(isDark), width: 1.0),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'ص $pageNumber',
+                style: TextStyle(
+                  fontFamily: 'cairo',
+                  color: fgColor,
+                  fontSize: isNarrow ? 12.0 : 13.0,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJuzButton({
+    required bool isDark,
+    required bool isNarrow,
+    required double height,
+    required double dockHeight,
+  }) {
+    final Color fgColor = _btnFg(isDark);
+
+    return Tooltip(
+      message: 'فهرس الأجزاء',
+      waitDuration: const Duration(milliseconds: 350),
+      child: _TapScale(
+        onTap: onJuzTap ?? () {},
+        child: SizedBox(
+          height: dockHeight,
+          child: Center(
+            child: Container(
+              height: height,
+              padding: EdgeInsets.symmetric(horizontal: isNarrow ? 7.0 : 10.0),
+              decoration: BoxDecoration(
+                color: _btnBg(isDark),
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border.all(color: _btnBorder(isDark), width: 1.0),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'جزء $juzNumber',
+                style: TextStyle(
+                  fontFamily: 'cairo',
+                  color: fgColor,
+                  fontSize: isNarrow ? 12.0 : 13.0,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
         ),

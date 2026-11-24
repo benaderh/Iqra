@@ -12,6 +12,8 @@ import 'widgets/dialogs/dialog_service.dart';
 import '../core/app_state.dart';
 import 'widgets/mic_bar.dart';
 import '../mushaf/mushaf_view.dart';
+import '../mushaf/external_mushaf_view.dart';
+import '../mushaf/quran_image_service.dart';
 import '../verse_list/verse_list_view.dart';
 
 /// Main interactive screen for real-time recitation tracking and reading.
@@ -82,6 +84,7 @@ class _TrackingScreenState extends State<TrackingScreen>
     _bottomBarListenable = Listenable.merge([
       app.themeNotifier,
       app.blurModeNotifier,
+      app.currentMushafPage,
       _surahNotifier,
     ]);
     if (!PlatformCapabilities.isWeb) {
@@ -345,6 +348,45 @@ class _TrackingScreenState extends State<TrackingScreen>
     );
   }
 
+  void _goToPage(int page) {
+    final targetPage = page.clamp(1, 604);
+    AppState.instance.saveMushafPage(targetPage);
+    AppState.instance.currentMushafPage.value = targetPage;
+    final first = MushafView.getFirstAyahOnPage(targetPage);
+    if (first != null) {
+      widget.controller.setTargetSurah(
+        first.$1,
+        preserveOtherSurahStates: true,
+        clearTargetSurah: false,
+      );
+      widget.controller.setManualAyah(first.$1, first.$2);
+      AppState.instance.saveLastPosition(first.$1, first.$2);
+      unawaited(QuranTimingService.instance.ensureSurahLoaded(first.$1));
+    }
+    setState(() {
+      _lastAyah = null;
+    });
+  }
+
+  void _showPagePicker() {
+    final curPage = AppState.instance.currentMushafPage.value.clamp(1, 604);
+    DialogService.showPagePicker(
+      context,
+      currentPage: curPage,
+      onPick: _goToPage,
+    );
+  }
+
+  void _showJuzPicker() {
+    final curPage = AppState.instance.currentMushafPage.value.clamp(1, 604);
+    final curJuz = QuranPageUtils.getJuzForPage(curPage);
+    DialogService.showJuzPicker(
+      context,
+      currentJuz: curJuz,
+      onPick: _goToPage,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
@@ -391,6 +433,10 @@ class _TrackingScreenState extends State<TrackingScreen>
                               final effectiveSurah = _effectiveSurah;
                               final surahName =
                                   _getSurahName(effectiveSurah, app.isArabic);
+                              final currentPage =
+                                  app.currentMushafPage.value.clamp(1, 604);
+                              final currentJuz =
+                                  QuranPageUtils.getJuzForPage(currentPage);
                               return BottomActionBar(
                                 key: const ValueKey('unified_dock_bar'),
                                 isRecording: widget.isRecording,
@@ -423,6 +469,10 @@ class _TrackingScreenState extends State<TrackingScreen>
                                 },
                                 surahName: surahName,
                                 onSurahTap: _showSurahPicker,
+                                pageNumber: currentPage,
+                                juzNumber: currentJuz,
+                                onPageTap: _showPagePicker,
+                                onJuzTap: _showJuzPicker,
                               );
                             },
                           ),
@@ -574,6 +624,14 @@ class _TrackingScreenState extends State<TrackingScreen>
 
   Widget _buildVerseContent(ThemeColors c, AppState app) {
     if (app.isMushafMode) {
+      if (!widget.isRecording &&
+          (QuranImageService.hasExternalImages(riwaya: QuranRiwaya.hafs) ||
+              QuranImageService.hasExternalImages(riwaya: QuranRiwaya.warsh))) {
+        return ExternalMushafView(
+          key: const ValueKey('external_mushaf_view'),
+          controller: widget.controller,
+        );
+      }
       return MushafView(
         key: const ValueKey('mushaf_view_main'),
         controller: widget.controller,

@@ -20,10 +20,30 @@ class AsrModelManager {
   static const int minValidBytes = 50 * 1024 * 1024; // 50 MB
   static const int expectedTotalBytes = 72705392; // ~72.7 MB
 
-  /// Checks whether the model is already downloaded and valid on local storage.
+  static const List<String> externalModelPaths = [
+    '/storage/emulated/0/QuranHW/zipformer_p_arabic_v3.int8.onnx',
+    '/storage/emulated/0/QuranHW/v2_zipformer_zipformer_p_arabic_v3.int8.onnx',
+    '/sdcard/QuranHW/zipformer_p_arabic_v3.int8.onnx',
+    '/sdcard/QuranHW/v2_zipformer_zipformer_p_arabic_v3.int8.onnx',
+  ];
+
+  /// Checks whether the model is in external storage or internal app storage.
   Future<bool> isModelReady() async {
     if (kIsWeb) return false;
     try {
+      // 1. Check external folder (/storage/emulated/0/QuranHW/)
+      for (final extPath in externalModelPaths) {
+        final extFile = File(extPath);
+        if (await extFile.exists()) {
+          final len = await extFile.length();
+          if (len >= minValidBytes) {
+            await _ensureCopiedFromExternal(extFile);
+            return true;
+          }
+        }
+      }
+
+      // 2. Check internal application support directory
       final docDir = await getApplicationSupportDirectory();
       final file = File('${docDir.path}/$modelFileName');
       if (await file.exists()) {
@@ -34,6 +54,29 @@ class AsrModelManager {
       }
     } catch (_) {}
     return false;
+  }
+
+  Future<void> _ensureCopiedFromExternal(File extFile) async {
+    try {
+      final docDir = await getApplicationSupportDirectory();
+      final targetFile = File('${docDir.path}/$modelFileName');
+      if (!await targetFile.exists() || (await targetFile.length()) < minValidBytes) {
+        await extFile.copy(targetFile.path);
+      }
+      final alt1 = File('${docDir.path}/zipformer_p_arabic_v3.int8.onnx');
+      if (!await alt1.exists()) {
+        await extFile.copy(alt1.path);
+      }
+      final docsDir = await getApplicationDocumentsDirectory();
+      final alt2 = File('${docsDir.path}/$modelFileName');
+      if (!await alt2.exists()) {
+        await extFile.copy(alt2.path);
+      }
+      final alt3 = File('${docsDir.path}/zipformer_p_arabic_v3.int8.onnx');
+      if (!await alt3.exists()) {
+        await extFile.copy(alt3.path);
+      }
+    } catch (_) {}
   }
 
   /// Downloads the ONNX model from Hugging Face with progress streaming and

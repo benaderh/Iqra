@@ -11,11 +11,13 @@ import 'settings_sheet.dart';
 import 'surah_picker_sheet.dart';
 import 'audio_download_dialog.dart';
 import 'dialog_base.dart';
+import 'page_juz_picker_dialog.dart';
 
 export 'app_alert_dialogs.dart' show PermissionReason;
 export 'package:recite_quran/recite_quran.dart' show VoiceSearchResult;
 export 'audio_download_dialog.dart' show AudioDownloadDialog;
 export 'dialog_base.dart';
+export 'page_juz_picker_dialog.dart' show QuranPageUtils;
 
 /// Centralized Dialog Service facade.
 ///
@@ -194,6 +196,32 @@ abstract final class DialogService {
         onVoiceSearchToggle: onVoiceSearchToggle,
         onPick: onPick,
       ),
+    );
+  }
+
+  /// Opens the Page Picker dialog to jump to any page (1..604).
+  static Future<void> showPagePicker(
+    BuildContext context, {
+    required int currentPage,
+    required ValueChanged<int> onPick,
+  }) {
+    return PagePickerDialog.show(
+      context,
+      currentPage: currentPage,
+      onPageSelected: onPick,
+    );
+  }
+
+  /// Opens the Juz Picker sheet to jump to any of the 30 Quranic Juz.
+  static Future<void> showJuzPicker(
+    BuildContext context, {
+    required int currentJuz,
+    required ValueChanged<int> onPick,
+  }) {
+    return JuzPickerSheet.show(
+      context,
+      currentJuz: currentJuz,
+      onPageSelected: onPick,
     );
   }
 }
