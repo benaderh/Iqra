@@ -558,7 +558,11 @@ class _TrackingScreenState extends State<TrackingScreen>
                       } else {
                         final surah = _effectiveSurah;
                         final targetAyah = widget.controller.activeAyah.value ?? 1;
-                        await QuranAudioService.instance.playAyah(surah, targetAyah);
+                        await QuranAudioService.instance.play(
+                          surah: surah,
+                          ayah: targetAyah,
+                          continuous: true,
+                        );
                       }
                       setState(() {});
                     },
