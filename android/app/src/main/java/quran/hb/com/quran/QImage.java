@@ -12,6 +12,8 @@ import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 
@@ -28,6 +30,7 @@ public class QImage extends PagerAdapter {
 		void onPageTap(float fracX, float fracY);
 		void onFlipNext(int position);
 		void onFlipPrev(int position);
+		void onLongPress();
 	}
 
 	/** Vues d'une page : image, surlignage (tilawa) et defilement (mode horizontal seulement) */
@@ -108,6 +111,45 @@ public class QImage extends PagerAdapter {
 					if (pageListener != null) pageListener.onPageTap(fracX, fracY);
 				}
 			});
+		} else {
+			final GestureDetector gd = new GestureDetector(_activity, new GestureDetector.SimpleOnGestureListener() {
+				@Override
+				public boolean onDown(MotionEvent e) {
+					return true;
+				}
+
+				@Override
+				public boolean onSingleTapConfirmed(MotionEvent e) {
+					if (pageListener != null) {
+						int w = viewLayout.getWidth();
+						int h = viewLayout.getHeight();
+						if (w > 0 && h > 0) {
+							float fx = e.getX() / w;
+							float fy = e.getY() / h;
+							pageListener.onPageTap(fx, fy);
+						}
+					}
+					return true;
+				}
+
+				@Override
+				public void onLongPress(MotionEvent e) {
+					if (pageListener != null) {
+						pageListener.onLongPress();
+					}
+				}
+			});
+
+			View.OnTouchListener touchListener = new View.OnTouchListener() {
+				@Override
+				public boolean onTouch(View v, MotionEvent event) {
+					return gd.onTouchEvent(event);
+				}
+			};
+			viewLayout.setOnTouchListener(touchListener);
+			if (imgDisplay != null) {
+				imgDisplay.setOnTouchListener(touchListener);
+			}
 		}
 		holders.put(position, holder);
 

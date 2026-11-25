@@ -13,6 +13,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import androidx.viewpager.widget.ViewPager;
@@ -23,6 +24,8 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -120,8 +123,8 @@ public class QMain extends Activity {
 			btnMic.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View v) {
-					int currentPage = 1;
-					if (curQ != null && !curQ.isClosed() && curQ.getCount() > 0) {
+					int currentPage = (lastP > 0 && lastP <= 604) ? lastP : 1;
+					if ((currentPage <= 0 || currentPage > 604) && curQ != null && !curQ.isClosed() && curQ.getCount() > 0) {
 						try {
 							currentPage = curQ.getInt(0);
 						} catch (Exception ignored) {}
@@ -372,59 +375,7 @@ public class QMain extends Activity {
 		//}
 
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-		final GestureDetector gestureDetector = new GestureDetector(new GestureDetector.SimpleOnGestureListener() {
-			public void onLongPress(MotionEvent e) {
-				//Toast.makeText(getApplicationContext(), "Land", Toast.LENGTH_SHORT).show();
-			if (lastP > 0 && lastP < 605) {
-				finish();
-				Intent intent = new
-						Intent(QMain.this, LandMark.class);
-				startActivity(intent);
-			}
-				//Log.e("", "Longpress detected");
-			}
-		});
-
-		viewPager.setOnTouchListener(new View.OnTouchListener() {
-			private int CLICK_ACTION_THRESHOLD = 200;
-			private float startX;
-			private float startY;
-
-			@Override
-			public boolean onTouch(View v, MotionEvent event) {
-				switch (event.getAction()) {
-					case MotionEvent.ACTION_DOWN:
-						//Toast.makeText(getApplicationContext(), "Land DOWN", Toast.LENGTH_SHORT).show();
-						startX = event.getX();
-						startY = event.getY();
-						break;
-
-
-					case MotionEvent.ACTION_UP:
-						//Toast.makeText(getApplicationContext(), "Land UP", Toast.LENGTH_SHORT).show();
-						float endX = event.getX();
-						float endY = event.getY();
-						if (isAClick(startX, endX, startY, endY) && !isLandscape()) {
-							handleTap(startX, startY);
-
-
-						}
-						break;
-				}
-				v.getParent().requestDisallowInterceptTouchEvent(true); //specific to my project
-				//return false; //specific to my project
-				return gestureDetector.onTouchEvent(event);
-			}
-
-			private boolean isAClick(float startX, float endX, float startY, float endY) {
-				float differenceX = Math.abs(startX - endX);
-				float differenceY = Math.abs(startY - endY);
-				//Toast.makeText(QMain.this, startX+" "+endX+"  "+startY+" "+endY, Toast.LENGTH_LONG).show();
-				return !(differenceX > CLICK_ACTION_THRESHOLD/* =5 */ || differenceY > CLICK_ACTION_THRESHOLD);
-			}
-		});
-
+		applyFullscreen();
 
 		viewPager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
 
@@ -1338,6 +1289,15 @@ public class QMain extends Activity {
 			adapter.prepareScroll(position + 1, false);
 			viewPager.setCurrentItem(position + 1, true);
 		}
+
+		@Override
+		public void onLongPress() {
+			if (lastP > 0 && lastP < 605) {
+				finish();
+				Intent intent = new Intent(QMain.this, LandMark.class);
+				startActivity(intent);
+			}
+		}
 	};
 
 	/**
@@ -1601,14 +1561,88 @@ public class QMain extends Activity {
 		super.onDestroy();
 	}
 
+	private void updateScreenDimensions() {
+		Display display = getWindowManager().getDefaultDisplay();
+		screenWidth = display.getWidth();
+		screenHeight = display.getHeight();
+	}
+
+	private void applyFullscreen() {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+			WindowInsetsController controller = getWindow().getInsetsController();
+			if (controller != null) {
+				controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+				controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+			}
+		} else {
+			getWindow().getDecorView().setSystemUiVisibility(
+				View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+				| View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+				| View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+				| View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+				| View.SYSTEM_UI_FLAG_FULLSCREEN
+				| View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+			);
+		}
+	}
+
+	private void updateToPage(int page) {
+		lastP = page;
+		if (curQ != null && !curQ.isClosed() && curQ.getCount() > 0) {
+			int j = 0;
+			curQ.moveToFirst();
+			do {
+				if (curQ.getInt(0) == lastP) {
+					break;
+				}
+				curQ.moveToNext();
+				j++;
+			} while (j < curQ.getCount());
+
+			try {
+				if (SQLdb == null || !SQLdb.isOpen()) {
+					SQLdb = openOrCreateDatabase("db_quran.sqlite", Context.MODE_PRIVATE, null);
+				}
+				SQLdb.execSQL("UPDATE tb_indice SET last_page = " + curQ.getInt(0));
+			} catch (Exception ignored) {}
+
+			if (btnP != null) btnP.setText("" + curQ.getInt(0));
+			if (btnS != null) btnS.setText(curQ.getString(1));
+			if (btnJ != null) btnJ.setText(curQ.getString(2));
+		}
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		applyFullscreen();
+		updateScreenDimensions();
+	}
+
+	@Override
+	public void onWindowFocusChanged(boolean hasFocus) {
+		super.onWindowFocusChanged(hasFocus);
+		if (hasFocus) {
+			applyFullscreen();
+		}
+	}
+
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
 		if (requestCode == 999 && resultCode == RESULT_OK && data != null) {
 			int finalPage = data.getIntExtra("final_page", -1);
-			if (finalPage > 0 && finalPage <= 604 && viewPager != null) {
-				pos = finalPage;
-				viewPager.setCurrentItem(pos);
+			if (finalPage > 0 && finalPage <= 604) {
+				updateToPage(finalPage);
+				if (isLandscape()) {
+					if (continuousView != null) {
+						continuousView.scrollToIndex(finalPage, false);
+					}
+				} else {
+					if (viewPager != null) {
+						viewPager.setCurrentItem(608 - finalPage, false);
+					}
+				}
 			}
 		}
 	}

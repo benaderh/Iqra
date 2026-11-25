@@ -7,6 +7,8 @@ import 'quran_image_service.dart';
 
 /// High-performance full-screen reader for external Quran page JPG/PNG images
 /// loaded directly from `/storage/emulated/0/QuranHW/` (Hafs / Warsh).
+/// In portrait: horizontal PageView (right to left).
+/// In landscape: full-width vertical continuous scroll (top to bottom like ContinuousPageView).
 class ExternalMushafView extends StatefulWidget {
   final HighlightingController controller;
   final VoidCallback? onPageTap;
@@ -25,14 +27,19 @@ class ExternalMushafView extends StatefulWidget {
 
 class _ExternalMushafViewState extends State<ExternalMushafView> {
   late PageController _pageController;
+  late ScrollController _verticalScrollController;
   late int _currentPage;
   bool _isProgrammaticScroll = false;
+  double _lastTotalItemHeight = 0;
+  bool _hasInitialScrolledLandscape = false;
+  bool? _lastWasLandscape;
 
   @override
   void initState() {
     super.initState();
     _currentPage = AppState.instance.currentMushafPage.value.clamp(1, 604);
     _pageController = PageController(initialPage: _currentPage - 1);
+    _verticalScrollController = ScrollController();
     AppState.instance.currentMushafPage.addListener(_onExternalPageChanged);
   }
 
@@ -40,6 +47,7 @@ class _ExternalMushafViewState extends State<ExternalMushafView> {
   void dispose() {
     AppState.instance.currentMushafPage.removeListener(_onExternalPageChanged);
     _pageController.dispose();
+    _verticalScrollController.dispose();
     super.dispose();
   }
 
@@ -54,15 +62,19 @@ class _ExternalMushafViewState extends State<ExternalMushafView> {
   void _goToPage(int page) {
     if (_currentPage == page) return;
     _currentPage = page;
+    _isProgrammaticScroll = true;
     if (_pageController.hasClients) {
       final targetIndex = page - 1;
       final currentIndex = _pageController.page?.round() ?? _pageController.initialPage;
       if (currentIndex != targetIndex) {
-        _isProgrammaticScroll = true;
         _pageController.jumpToPage(targetIndex);
-        _isProgrammaticScroll = false;
       }
     }
+    if (_verticalScrollController.hasClients && _lastTotalItemHeight > 0) {
+      final targetOffset = (page - 1) * _lastTotalItemHeight;
+      _verticalScrollController.jumpTo(targetOffset);
+    }
+    _isProgrammaticScroll = false;
   }
 
   void _onPageChanged(int index) {
@@ -88,10 +100,122 @@ class _ExternalMushafViewState extends State<ExternalMushafView> {
     }
   }
 
+  void _onVerticalScroll() {
+    if (_isProgrammaticScroll || !_verticalScrollController.hasClients || _lastTotalItemHeight <= 0) return;
+    final offset = _verticalScrollController.offset;
+    if (offset < 0) return;
+    final pageNum = (offset / _lastTotalItemHeight).floor() + 1;
+    final clamped = pageNum.clamp(1, 604);
+    if (clamped != _currentPage) {
+      _currentPage = clamped;
+      if (AppState.instance.currentMushafPage.value != clamped) {
+        AppState.instance.currentMushafPage.value = clamped;
+        AppState.instance.saveMushafPage(clamped);
+      }
+      final first = MushafProvider.instance.getFirstAyahOnPage(clamped);
+      if (first != null) {
+        widget.controller.setTargetSurah(
+          first.$1,
+          preserveOtherSurahStates: true,
+          clearTargetSurah: false,
+        );
+        widget.controller.setManualAyah(first.$1, first.$2);
+        AppState.instance.saveLastPosition(first.$1, first.$2);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final app = AppState.instance;
     final isDark = app.isDarkMode;
+    final bool isLandscape = MediaQuery.orientationOf(context) == Orientation.landscape;
+
+    if (_lastWasLandscape != isLandscape) {
+      _lastWasLandscape = isLandscape;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (isLandscape) {
+          if (_verticalScrollController.hasClients && _lastTotalItemHeight > 0) {
+            _verticalScrollController.jumpTo((_currentPage - 1) * _lastTotalItemHeight);
+          }
+        } else {
+          if (_pageController.hasClients) {
+            _pageController.jumpToPage(_currentPage - 1);
+          }
+        }
+      });
+    }
+
+    if (isLandscape) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final screenWidth = constraints.maxWidth;
+          final pageHeight = screenWidth * 1.4142; // Quran ratio A4 (height / width)
+          const separatorHeight = 6.0;
+          _lastTotalItemHeight = pageHeight + separatorHeight;
+
+          if (!_hasInitialScrolledLandscape && _currentPage > 1) {
+            _hasInitialScrolledLandscape = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _verticalScrollController.hasClients) {
+                _verticalScrollController.jumpTo((_currentPage - 1) * _lastTotalItemHeight);
+              }
+            });
+          }
+
+          return NotificationListener<ScrollNotification>(
+            onNotification: (notification) {
+              _onVerticalScroll();
+              return false;
+            },
+            child: ListView.builder(
+              controller: _verticalScrollController,
+              physics: const ClampingScrollPhysics(),
+              itemCount: 604,
+              itemExtent: _lastTotalItemHeight,
+              itemBuilder: (context, index) {
+                final pageNum = index + 1;
+                final imageFile = QuranImageService.getPageImage(pageNum, riwaya: widget.riwaya);
+
+                Widget content;
+                if (imageFile != null) {
+                  content = Image.file(
+                    imageFile,
+                    width: screenWidth,
+                    height: pageHeight,
+                    fit: BoxFit.fill,
+                    filterQuality: FilterQuality.medium,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, __, ___) => _buildFallback(pageNum, isDark),
+                  );
+                } else {
+                  content = SizedBox(
+                    width: screenWidth,
+                    height: pageHeight,
+                    child: _buildFallback(pageNum, isDark),
+                  );
+                }
+
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: widget.onPageTap,
+                  child: Column(
+                    children: [
+                      content,
+                      Container(
+                        height: separatorHeight,
+                        color: const Color(0xFF1A1A1A),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      );
+    }
 
     return Directionality(
       textDirection: TextDirection.rtl, // RTL Quran reading direction

@@ -59,6 +59,18 @@ class MainActivity : FlutterActivity() {
         ContextCompat.registerReceiver(this, screenReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val initialPage = intent.getIntExtra("initial_page", -1)
+        if (initialPage > 0) {
+            flutterEngine?.dartExecutor?.binaryMessenger?.let { messenger ->
+                MethodChannel(messenger, "com.recitequran.app/launch_params")
+                    .invokeMethod("onPageChangedFromNative", initialPage)
+            }
+        }
+    }
+
     override fun onDestroy() {
         try {
             unregisterReceiver(screenReceiver)
