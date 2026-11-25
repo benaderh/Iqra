@@ -79,8 +79,8 @@ public class LandMark extends Activity {
         lastPt = curQ.getString(3);
 
         tv_pc.setText("الصفحة الحالية\nسورة " + lastPt + "\nالصفحة " + lastP);
-        tv_p1.setText("سورة " + rt1 + "\nالصفحة " + ri1);
-        tv_p2.setText("سورة " + rt2 + "\nالصفحة " + ri2);
+        tv_p1.setText("حفص: سورة " + rt1 + "\nالصفحة " + ri1);
+        tv_p2.setText("ورش: سورة " + rt2 + "\nالصفحة " + ri2);
         tv_p3.setText("سورة " + rt3 + "\nالصفحة " + ri3);
 
         btn_O1.setOnClickListener(new View.OnClickListener() {
@@ -88,7 +88,7 @@ public class LandMark extends Activity {
             public void onClick(View arg0) {
                 //Toast.makeText(getApplicationContext(), "القائمة", Toast.LENGTH_SHORT).show();
                 SQLdb = openOrCreateDatabase("db_quran.sqlite", Context.MODE_PRIVATE, null);
-                SQLdb.execSQL("UPDATE tb_indice SET last_page = " + ri1 + "");
+                SQLdb.execSQL("UPDATE tb_indice SET last_page = " + ri1 + ", last_riwaya = 1");
                 finish();
                 Intent intent = new Intent(LandMark.this, QMain.class);
                 startActivity(intent);
@@ -100,7 +100,7 @@ public class LandMark extends Activity {
             public void onClick(View arg0) {
                 //Toast.makeText(getApplicationContext(), "القائمة", Toast.LENGTH_SHORT).show();
                 SQLdb = openOrCreateDatabase("db_quran.sqlite", Context.MODE_PRIVATE, null);
-                SQLdb.execSQL("UPDATE tb_indice SET last_page = " + ri2 + "");
+                SQLdb.execSQL("UPDATE tb_indice SET last_page = " + ri2 + ", last_riwaya = 2");
                 finish();
                 Intent intent = new Intent(LandMark.this, QMain.class);
                 startActivity(intent);

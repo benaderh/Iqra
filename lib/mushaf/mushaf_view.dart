@@ -94,6 +94,10 @@ class _MushafViewState extends State<MushafView>
 
   // Interactive PageController driving train-style horizontal page transitions
   late PageController _pageController;
+  late final ScrollController _landscapeScrollController;
+  Orientation? _lastOrientation;
+  double _landscapeItemExtent = 0;
+  bool _didInitialLandscapeScroll = false;
   bool _isProgrammaticScroll = false;
 
   void _onScrollEnd() {
@@ -168,6 +172,7 @@ class _MushafViewState extends State<MushafView>
     final provider = MushafProvider.instance;
     _currentPage = _findInitialPage();
     _pageController = PageController(initialPage: _currentPage - 1);
+    _landscapeScrollController = ScrollController();
     _isLoading = !provider.isReady;
 
     _spinnerController = AnimationController(
@@ -339,6 +344,7 @@ class _MushafViewState extends State<MushafView>
     _spinnerMark.dispose();
     _qvpViewCtrl.dispose();
     _pageController.dispose();
+    _landscapeScrollController.dispose();
     _underlayRepaintTrigger.dispose();
     _staticRepaintTrigger.dispose();
     _overlayRepaintTrigger.dispose();
@@ -761,6 +767,25 @@ class _MushafViewState extends State<MushafView>
       MushafProvider.instance.lastViewportSize,
     );
 
+    if (_landscapeScrollController.hasClients && _landscapeItemExtent > 0) {
+      final targetOffset = (clamped - 1) * _landscapeItemExtent;
+      _isProgrammaticScroll = true;
+      if (animated) {
+        _landscapeScrollController
+            .animateTo(
+              targetOffset,
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+            )
+            .whenComplete(() {
+              if (mounted) _isProgrammaticScroll = false;
+            });
+      } else {
+        _landscapeScrollController.jumpTo(targetOffset);
+        _isProgrammaticScroll = false;
+      }
+    }
+
     if (_pageController.hasClients) {
       final targetIndex = clamped - 1;
       final currentIndex =
@@ -1102,8 +1127,23 @@ class _MushafViewState extends State<MushafView>
     final safeBottom = math.max(padding.bottom, viewPadding.bottom);
     final safeLeft = math.max(padding.left, viewPadding.left);
 
-    final bool isLandscape =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final orientation = MediaQuery.orientationOf(context);
+    final bool isLandscape = orientation == Orientation.landscape;
+
+    if (_lastOrientation != null && _lastOrientation != orientation) {
+      if (isLandscape) {
+        _didInitialLandscapeScroll = false;
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_pageController.hasClients &&
+              (_pageController.page?.round() ?? _pageController.initialPage) !=
+                  _currentPage - 1) {
+            _pageController.jumpToPage(_currentPage - 1);
+          }
+        });
+      }
+    }
+    _lastOrientation = orientation;
 
     final double topPadding = isLandscape
         ? 0.0
@@ -1131,6 +1171,11 @@ class _MushafViewState extends State<MushafView>
             final double usableHeight = math.max(
                 0.0, constraints.maxHeight - topPadding - bottomPadding);
             final bool isWideScreen = constraints.maxWidth > 650;
+            final double landscapePageHeight = constraints.maxWidth * 1.414;
+            const double separatorHeight = 6.0;
+            final double itemExtent = landscapePageHeight + separatorHeight;
+            _landscapeItemExtent = itemExtent;
+
             final double pageContainerWidth = isLandscape
                 ? constraints.maxWidth
                 : (isWideScreen
@@ -1139,12 +1184,22 @@ class _MushafViewState extends State<MushafView>
 
             final viewportSize = Size(
               pageContainerWidth,
-              usableHeight,
+              isLandscape ? landscapePageHeight : usableHeight,
             );
             if (MushafProvider.instance.lastViewportSize != viewportSize) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
                   MushafProvider.instance.lastViewportSize = viewportSize;
+                }
+              });
+            }
+
+            if (isLandscape && !_didInitialLandscapeScroll && itemExtent > 0) {
+              _didInitialLandscapeScroll = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_landscapeScrollController.hasClients) {
+                  final target = (_currentPage - 1) * itemExtent;
+                  _landscapeScrollController.jumpTo(target);
                 }
               });
             }
@@ -1164,38 +1219,96 @@ class _MushafViewState extends State<MushafView>
                     child: Center(
                       child: SizedBox(
                         width: pageContainerWidth,
-                        height: usableHeight,
-                        child: NotificationListener<ScrollNotification>(
-                          onNotification: (notification) {
-                            if (notification is ScrollStartNotification) {
-                              MushafProvider.instance.isPageScrolling.value =
-                                  true;
-                            } else if (notification is ScrollEndNotification) {
-                              _onScrollEnd();
-                            } else if (notification is UserScrollNotification) {
-                              if (notification.direction ==
-                                  ScrollDirection.idle) {
-                                _onScrollEnd();
-                              } else {
-                                MushafProvider.instance.isPageScrolling.value =
-                                    true;
-                              }
-                            }
-                            return false;
-                          },
-                          child: PageView.builder(
-                            controller: _pageController,
-                            itemCount: QuranMetadata.maxPage,
-                            scrollDirection: isLandscape
-                                ? Axis.vertical
-                                : Axis.horizontal,
-                            padEnds: false,
-                            physics: const ClampingScrollPhysics(),
-                            onPageChanged: _onPageChangedFromScroll,
-                            itemBuilder: (context, index) =>
-                                _buildPageItem(context, index + 1),
-                          ),
-                        ),
+                        height:
+                            isLandscape ? constraints.maxHeight : usableHeight,
+                        child: isLandscape
+                            ? NotificationListener<ScrollNotification>(
+                                onNotification: (notification) {
+                                  if (notification is ScrollStartNotification) {
+                                    MushafProvider.instance.isPageScrolling.value =
+                                        true;
+                                  } else if (notification
+                                      is ScrollEndNotification) {
+                                    _onScrollEnd();
+                                  } else if (notification
+                                      is ScrollUpdateNotification) {
+                                    if (_landscapeItemExtent > 0 &&
+                                        !_isProgrammaticScroll) {
+                                      final page = (notification.metrics.pixels /
+                                                  _landscapeItemExtent)
+                                              .round() +
+                                          1;
+                                      final clamped =
+                                          QuranMetadata.clampPage(page);
+                                      if (clamped != _currentPage) {
+                                        setState(() {
+                                          _currentPage = clamped;
+                                        });
+                                        AppState.instance.currentMushafPage
+                                            .value = clamped;
+                                        _syncPageSelection(clamped);
+                                        _debouncedSavePosition(clamped);
+                                      }
+                                    }
+                                  }
+                                  return false;
+                                },
+                                child: ListView.builder(
+                                  controller: _landscapeScrollController,
+                                  itemCount: QuranMetadata.maxPage,
+                                  itemExtent: itemExtent,
+                                  physics: const ClampingScrollPhysics(),
+                                  itemBuilder: (context, index) {
+                                    final pageNum = index + 1;
+                                    return Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: constraints.maxWidth,
+                                          height: landscapePageHeight,
+                                          child:
+                                              _buildPageItem(context, pageNum),
+                                        ),
+                                        Container(
+                                          height: separatorHeight,
+                                          color: const Color(0xFF2C2C2C),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              )
+                            : NotificationListener<ScrollNotification>(
+                                onNotification: (notification) {
+                                  if (notification is ScrollStartNotification) {
+                                    MushafProvider.instance.isPageScrolling.value =
+                                        true;
+                                  } else if (notification
+                                      is ScrollEndNotification) {
+                                    _onScrollEnd();
+                                  } else if (notification
+                                      is UserScrollNotification) {
+                                    if (notification.direction ==
+                                        ScrollDirection.idle) {
+                                      _onScrollEnd();
+                                    } else {
+                                      MushafProvider.instance.isPageScrolling.value =
+                                          true;
+                                    }
+                                  }
+                                  return false;
+                                },
+                                child: PageView.builder(
+                                  controller: _pageController,
+                                  itemCount: QuranMetadata.maxPage,
+                                  scrollDirection: Axis.horizontal,
+                                  padEnds: false,
+                                  physics: const ClampingScrollPhysics(),
+                                  onPageChanged: _onPageChangedFromScroll,
+                                  itemBuilder: (context, index) =>
+                                      _buildPageItem(context, index + 1),
+                                ),
+                              ),
                       ),
                     ),
                   ),
