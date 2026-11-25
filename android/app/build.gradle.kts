@@ -93,3 +93,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.viewpager:viewpager:1.0.0")
+}

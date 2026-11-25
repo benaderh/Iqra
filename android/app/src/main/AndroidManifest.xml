@@ -26,9 +26,33 @@
         android:largeHeap="true"
         android:requestLegacyExternalStorage="true"
         android:icon="@mipmap/ic_launcher">
+        <!-- QIqra Activities -->
+        <activity
+            android:name="quran.hb.com.quran.SplashActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="quran.hb.com.quran.QMain"
+            android:configChanges="orientation|screenSize"
+            android:theme="@android:style/Theme.Holo.NoActionBar.Fullscreen" />
+
+        <activity android:name="quran.hb.com.quran.IndexP" android:label="البحث عن صفحة" />
+        <activity android:name="quran.hb.com.quran.IndexS" android:label="البحث عن سورة" />
+        <activity android:name="quran.hb.com.quran.IndexJ" android:label="البحث عن جزء" />
+        <activity android:name="quran.hb.com.quran.IndexF" android:label="البحث عن آية" />
+        <activity android:name="quran.hb.com.quran.LandMark" android:label="حفظ و تعديل العلامة" />
+        <activity android:name="quran.hb.com.quran.Tefcir" android:label="تفسير ميسر" />
+        <activity android:name="quran.hb.com.quran.About" android:label="حول" />
+
         <activity
             android:name=".MainActivity"
-            android:exported="true"
+            android:exported="false"
             android:launchMode="singleTop"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
@@ -48,10 +72,6 @@
               android:name="flutter_deeplinking_enabled"
               android:value="false"
               />
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
 
             <!-- Maglis Deep Links & App Links -->
             <intent-filter android:autoVerify="true">

@@ -660,8 +660,24 @@ class _OrchestratorState extends State<_Orchestrator>
       MushafView.preloadData();
       final service = _IsolateQuranMetadataService();
       _repo = QuranRepository(service);
-      final initialSurah = AppState.instance.lastSurah;
-      final initialAyah = AppState.instance.lastAyah;
+      int initialSurah = AppState.instance.lastSurah;
+      int initialAyah = AppState.instance.lastAyah;
+      int? paramPage;
+      if (PlatformCapabilities.isAndroid) {
+        try {
+          const launchChannel = MethodChannel('com.recitequran.app/launch_params');
+          paramPage = await launchChannel.invokeMethod<int>('getInitialPage');
+          if (paramPage != null && paramPage > 0 && paramPage <= 604) {
+            AppState.instance.currentMushafPage.value = paramPage;
+            AppState.instance.saveMushafPage(paramPage);
+            final first = MushafProvider.instance.getFirstAyahOnPage(paramPage);
+            if (first != null) {
+              initialSurah = first.$1;
+              initialAyah = first.$2;
+            }
+          }
+        } catch (_) {}
+      }
       await _repo!.loadSurahAsync(initialSurah);
       _voiceSearchCtrl.repository = _repo;
 
@@ -714,6 +730,12 @@ class _OrchestratorState extends State<_Orchestrator>
         if (MaglisLinkService.instance.hasPendingRoomCode) {
           MaglisLinkService.instance.consumePendingIfAny(context);
           return;
+        }
+
+        if (paramPage != null && paramPage > 0) {
+          if (mounted && !_isRecording && !_isEngineLoading) {
+            _toggleRecord();
+          }
         }
 
         if (PlatformCapabilities.isWeb) {

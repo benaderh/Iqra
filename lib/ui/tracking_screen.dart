@@ -647,7 +647,20 @@ class _TrackingScreenState extends State<TrackingScreen>
 
         return Directionality(
           textDirection: app.isArabic ? TextDirection.rtl : TextDirection.ltr,
-          child: Scaffold(
+          child: PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) async {
+              if (didPop) return;
+              try {
+                const launchChannel = MethodChannel('com.recitequran.app/launch_params');
+                await launchChannel.invokeMethod('exitRecitation', {
+                  'page': AppState.instance.currentMushafPage.value,
+                });
+              } catch (_) {
+                SystemNavigator.pop();
+              }
+            },
+            child: Scaffold(
             resizeToAvoidBottomInset: false,
             backgroundColor: c.bg,
             body: ValueListenableBuilder<bool>(
@@ -873,8 +886,9 @@ class _TrackingScreenState extends State<TrackingScreen>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildVerseContent(ThemeColors c, AppState app) {
     if (app.isMushafMode) {

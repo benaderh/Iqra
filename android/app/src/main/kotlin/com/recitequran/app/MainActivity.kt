@@ -69,6 +69,27 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.recitequran.app/launch_params").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getInitialPage" -> {
+                    val page = intent?.getIntExtra("initial_page", -1) ?: -1
+                    result.success(page)
+                }
+                "exitRecitation" -> {
+                    val page = call.argument<Int>("page") ?: -1
+                    if (page > 0) {
+                        val resultIntent = Intent().apply {
+                            putExtra("final_page", page)
+                        }
+                        setResult(RESULT_OK, resultIntent)
+                    }
+                    finish()
+                    result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "isPlayStoreInstalled") {
                 Thread {
