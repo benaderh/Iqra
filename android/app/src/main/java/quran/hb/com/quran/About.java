@@ -1,5 +1,7 @@
 package quran.hb.com.quran;
 
+import com.recitequran.app.R;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;

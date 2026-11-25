@@ -1,5 +1,7 @@
 package quran.hb.com.quran;
 
+import com.recitequran.app.R;
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
