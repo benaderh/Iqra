@@ -758,10 +758,11 @@ class _TrackingScreenState extends State<TrackingScreen>
               },
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   String _getSurahName(int surahNum, bool isArabic) {
     final metadata = widget.controller.repository.surahMetadata;
@@ -886,9 +887,8 @@ class _TrackingScreenState extends State<TrackingScreen>
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildVerseContent(ThemeColors c, AppState app) {
     if (app.isMushafMode) {
