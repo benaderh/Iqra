@@ -97,6 +97,11 @@ class _MushafViewState extends State<MushafView>
   late final ScrollController _landscapeScrollController;
   Orientation? _lastOrientation;
   double _landscapeItemExtent = 0;
+  double _landscapePageHeight = 0;
+  double _lastLandscapeViewportHeight = 0;
+  bool _isLandscapeMode = false;
+  int? _lastLandscapeFollowedLine;
+  int? _lastLandscapeFollowedPage;
   bool _didInitialLandscapeScroll = false;
   bool _isProgrammaticScroll = false;
 
@@ -457,6 +462,14 @@ class _MushafViewState extends State<MushafView>
       rev: rev,
     );
 
+    if (activeAyah != null) {
+      _autoScrollLandscapeToActiveLine(
+        surah: activeSurah,
+        ayah: activeAyah,
+        word: activeWord,
+      );
+    }
+
     // Spinner start/stop and active audio overlay badge depend on audio state
     // transitions that don't always move the coordinate (buffering -> playing on same ayah).
     _checkSpinnerAnimation();
@@ -532,6 +545,12 @@ class _MushafViewState extends State<MushafView>
 
     _requestSyncVisuals();
     _notifyUnderlayIfRelevant();
+    if (activeAyah != null) {
+      _autoScrollLandscapeToActiveLine(
+        surah: activeSurah,
+        ayah: activeAyah,
+      );
+    }
   }
 
   /// Follows the controller's current coordinate to its page. This is the only
@@ -558,6 +577,74 @@ class _MushafViewState extends State<MushafView>
     if (targetPage == null || targetPage == _currentPage) return;
     _navigationTargetAyah = (surah, ayah);
     _goToPage(targetPage);
+  }
+
+  void _autoScrollLandscapeToActiveLine({
+    required int surah,
+    required int ayah,
+    int? word,
+  }) {
+    if (!_isLandscapeMode ||
+        !_landscapeScrollController.hasClients ||
+        _landscapeItemExtent <= 0) {
+      return;
+    }
+    if (_isProgrammaticScroll) return;
+
+    // Don't auto-scroll if the user is actively touching/dragging
+    if (_landscapeScrollController.position.userScrollDirection !=
+        ScrollDirection.idle) {
+      return;
+    }
+
+    final page = _currentPageObject;
+    if (page == null || page.isDisposed) return;
+
+    int? activeLine;
+    for (final w in page.words) {
+      if (w.surah == surah && w.ayah == ayah) {
+        if (word == null || w.word - 1 == word) {
+          activeLine = w.line;
+          break;
+        }
+        activeLine ??= w.line;
+      }
+    }
+
+    if (activeLine == null) return;
+    if (activeLine == _lastLandscapeFollowedLine &&
+        _currentPage == _lastLandscapeFollowedPage) {
+      return;
+    }
+
+    final lineInfo = (activeLine >= 1 && activeLine <= page.lines.length)
+        ? page.lines[activeLine - 1]
+        : null;
+    final double lineFraction = lineInfo != null
+        ? (lineInfo.centre / page.height)
+        : ((activeLine - 0.5) / 15.0);
+
+    final double landscapePageHeight = _landscapePageHeight;
+    final double pageTopOffset = (_currentPage - 1) * _landscapeItemExtent;
+    final double lineYInScroll =
+        pageTopOffset + (lineFraction * landscapePageHeight);
+
+    final double viewportHeight = _lastLandscapeViewportHeight > 0
+        ? _lastLandscapeViewportHeight
+        : 360.0;
+    final double targetScroll = (lineYInScroll - (viewportHeight * 0.38))
+        .clamp(0.0, _landscapeScrollController.position.maxScrollExtent);
+
+    final double currentScroll = _landscapeScrollController.offset;
+    if ((currentScroll - targetScroll).abs() > 24.0) {
+      _lastLandscapeFollowedLine = activeLine;
+      _lastLandscapeFollowedPage = _currentPage;
+      _landscapeScrollController.animateTo(
+        targetScroll,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   void _checkSpinnerAnimation() {
@@ -759,6 +846,8 @@ class _MushafViewState extends State<MushafView>
     if (clamped == _currentPage && _currentPageObject != null) return;
 
     _currentPage = clamped;
+    _lastLandscapeFollowedLine = null;
+    _lastLandscapeFollowedPage = null;
     if (AppState.instance.currentMushafPage.value != clamped) {
       AppState.instance.currentMushafPage.value = clamped;
     }
@@ -862,6 +951,14 @@ class _MushafViewState extends State<MushafView>
 
     if (notify && mounted && !alreadyLoaded) {
       setState(() {});
+    }
+    final (int activeSurah, int? activeAyah) =
+        widget.controller.recitationCoordinate;
+    if (activeAyah != null) {
+      _autoScrollLandscapeToActiveLine(
+        surah: activeSurah,
+        ayah: activeAyah,
+      );
     }
   }
 
@@ -1175,6 +1272,9 @@ class _MushafViewState extends State<MushafView>
             const double separatorHeight = 6.0;
             final double itemExtent = landscapePageHeight + separatorHeight;
             _landscapeItemExtent = itemExtent;
+            _landscapePageHeight = landscapePageHeight;
+            _lastLandscapeViewportHeight = constraints.maxHeight;
+            _isLandscapeMode = isLandscape;
 
             final double pageContainerWidth = isLandscape
                 ? constraints.maxWidth
