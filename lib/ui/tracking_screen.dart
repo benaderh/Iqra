@@ -812,20 +812,6 @@ class _TrackingScreenState extends State<TrackingScreen>
 
   Widget _buildVerseContent(ThemeColors c, AppState app) {
     if (app.isMushafMode) {
-      if (QuranImageService.hasExternalImages(riwaya: _riwaya) ||
-          QuranImageService.hasExternalImages(riwaya: QuranRiwaya.hafs) ||
-          QuranImageService.hasExternalImages(riwaya: QuranRiwaya.warsh)) {
-        return ExternalMushafView(
-          key: ValueKey('external_mushaf_${_riwaya.name}'),
-          controller: widget.controller,
-          riwaya: _riwaya,
-          onPageTap: () {
-            setState(() {
-              _showBars = !_showBars;
-            });
-          },
-        );
-      }
       return GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () {

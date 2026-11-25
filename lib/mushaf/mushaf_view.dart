@@ -1102,15 +1102,23 @@ class _MushafViewState extends State<MushafView>
     final safeBottom = math.max(padding.bottom, viewPadding.bottom);
     final safeLeft = math.max(padding.left, viewPadding.left);
 
-    final double topPadding = safeTop > 0 ? safeTop + 4.0 : 8.0;
+    final bool isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
+    final double topPadding = isLandscape
+        ? 0.0
+        : (safeTop > 0 ? safeTop + 4.0 : 8.0);
 
     final bool isSessionActive =
         widget.isRecording || MaglisController.instance.inSession;
 
-    final double pageLabelBottom =
-        isSessionActive ? (safeBottom + 27.0) : (safeBottom + 60.0);
+    final double pageLabelBottom = isLandscape
+        ? (safeBottom + 8.0)
+        : (isSessionActive ? (safeBottom + 27.0) : (safeBottom + 60.0));
 
-    final double bottomPadding = safeBottom + 74.0;
+    final double bottomPadding = isLandscape
+        ? 0.0
+        : (safeBottom + 74.0);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -1123,9 +1131,11 @@ class _MushafViewState extends State<MushafView>
             final double usableHeight = math.max(
                 0.0, constraints.maxHeight - topPadding - bottomPadding);
             final bool isWideScreen = constraints.maxWidth > 650;
-            final double pageContainerWidth = isWideScreen
-                ? math.min(constraints.maxWidth, usableHeight * 0.72)
-                : constraints.maxWidth;
+            final double pageContainerWidth = isLandscape
+                ? constraints.maxWidth
+                : (isWideScreen
+                    ? math.min(constraints.maxWidth, usableHeight * 0.72)
+                    : constraints.maxWidth);
 
             final viewportSize = Size(
               pageContainerWidth,
@@ -1176,6 +1186,9 @@ class _MushafViewState extends State<MushafView>
                           child: PageView.builder(
                             controller: _pageController,
                             itemCount: QuranMetadata.maxPage,
+                            scrollDirection: isLandscape
+                                ? Axis.vertical
+                                : Axis.horizontal,
                             padEnds: false,
                             physics: const ClampingScrollPhysics(),
                             onPageChanged: _onPageChangedFromScroll,

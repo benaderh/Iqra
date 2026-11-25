@@ -147,6 +147,7 @@ public class QMain extends Activity {
 		btnAPb = (Button) findViewById(R.id.btnAPb);
 		btnANb = (Button) findViewById(R.id.btnANb);
 		btnRetour = (Button) findViewById(R.id.btnRetour);
+		adjustBarsForCutout();
 		//tv_img = (ImageView) findViewById(R.id.imgV);
 		ayaT = (TextView) findViewById(R.id.tv_aya);
 		tefcirT = (TextView) findViewById(R.id.tv_tefcir);
@@ -1565,6 +1566,48 @@ public class QMain extends Activity {
 		Display display = getWindowManager().getDefaultDisplay();
 		screenWidth = display.getWidth();
 		screenHeight = display.getHeight();
+	}
+
+	private void adjustBarsForCutout() {
+		final View ll1 = findViewById(R.id.ll1);
+		final View ll2 = findViewById(R.id.ll2);
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+			getWindow().getDecorView().setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+				@Override
+				public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+					android.view.DisplayCutout cutout = insets.getDisplayCutout();
+					int topInset = cutout != null ? cutout.getSafeInsetTop() : 0;
+					int bottomInset = cutout != null ? cutout.getSafeInsetBottom() : 0;
+					int leftInset = cutout != null ? cutout.getSafeInsetLeft() : 0;
+					int rightInset = cutout != null ? cutout.getSafeInsetRight() : 0;
+
+					float density = getResources().getDisplayMetrics().density;
+					int minTop = Math.round(28 * density);
+					int minBottom = Math.round(28 * density);
+					int minSide = Math.round(12 * density);
+
+					int topMargin = Math.max(topInset + 4, minTop);
+					int bottomMargin = Math.max(bottomInset + 4, minBottom);
+					int sideMargin = Math.max(Math.max(leftInset, rightInset), minSide);
+
+					if (ll1 != null && ll1.getLayoutParams() instanceof RelativeLayout.LayoutParams) {
+						RelativeLayout.LayoutParams lp1 = (RelativeLayout.LayoutParams) ll1.getLayoutParams();
+						lp1.topMargin = topMargin;
+						lp1.leftMargin = sideMargin;
+						lp1.rightMargin = sideMargin;
+						ll1.setLayoutParams(lp1);
+					}
+					if (ll2 != null && ll2.getLayoutParams() instanceof RelativeLayout.LayoutParams) {
+						RelativeLayout.LayoutParams lp2 = (RelativeLayout.LayoutParams) ll2.getLayoutParams();
+						lp2.bottomMargin = bottomMargin;
+						lp2.leftMargin = sideMargin;
+						lp2.rightMargin = sideMargin;
+						ll2.setLayoutParams(lp2);
+					}
+					return insets;
+				}
+			});
+		}
 	}
 
 	private void applyFullscreen() {
