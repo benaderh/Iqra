@@ -623,12 +623,25 @@ class _MushafViewState extends State<MushafView>
     final int? ayahPage = provider.getPageForAyah(surah, ayah);
     final int targetPage = ayahPage ?? _currentPage;
 
-    final page = (targetPage == _currentPage &&
+    final QvpPage? page = (targetPage == _currentPage &&
             _currentPageObject != null &&
             !_currentPageObject!.isDisposed)
         ? _currentPageObject
-        : provider.getPage(targetPage);
-    if (page == null || page.isDisposed) return;
+        : provider.getCachedPage(targetPage);
+    if (page == null || page.isDisposed) {
+      if (provider.getCachedPage(targetPage) == null) {
+        provider.getPage(targetPage).then((loaded) {
+          if (mounted && loaded != null && !loaded.isDisposed) {
+            _autoScrollLandscapeToActiveLine(
+              surah: surah,
+              ayah: ayah,
+              word: word,
+            );
+          }
+        });
+      }
+      return;
+    }
 
     int? activeLine;
     for (final w in page.words) {
