@@ -25,12 +25,14 @@ class MushafView extends StatefulWidget {
   final HighlightingController controller;
   final bool isRecording;
   final bool showBottomPageNumber;
+  final bool showBars;
 
   const MushafView({
     super.key,
     required this.controller,
     required this.isRecording,
     this.showBottomPageNumber = true,
+    this.showBars = true,
   });
 
   static bool get isSyncingSurah => MushafProvider.instance.isSyncingSurah;
@@ -391,13 +393,23 @@ class _MushafViewState extends State<MushafView>
     _lastAdvancedSurah = currentSurah;
 
     try {
-      // Same base page-sync rule as every other coordinate move.
-      _syncPageFollow(nextSurah, 1);
+      final targetPage = MushafProvider.instance.getPageForAyah(nextSurah, 1);
+      if (targetPage != null) {
+        AppState.instance.saveMushafPage(targetPage);
+      }
+      AppState.instance.saveLastPosition(nextSurah, 1);
 
       await widget.controller.advanceToNextSurah(
         nextSurah: nextSurah,
         isRecording: widget.isRecording,
       );
+
+      if (!_isLandscapeMode && targetPage != null && targetPage != _currentPage) {
+        _goToPage(targetPage);
+      } else {
+        _autoScrollLandscapeToActiveLine(surah: nextSurah, ayah: 1);
+      }
+
       _requestSyncVisuals();
     } catch (e) {
       debugPrint('Error advancing to next surah: $e');
@@ -576,7 +588,17 @@ class _MushafViewState extends State<MushafView>
     final targetPage = provider.getPageForAyah(surah, ayah);
     if (targetPage == null || targetPage == _currentPage) return;
     _navigationTargetAyah = (surah, ayah);
-    _goToPage(targetPage);
+
+    if (_isLandscapeMode) {
+      // In landscape continuous scroll mode, update _currentPage without jumping
+      // to the top of targetPage so _autoScrollLandscapeToActiveLine can smoothly
+      // scroll directly to the line without vertical bounce/jitter.
+      _currentPage = targetPage;
+      AppState.instance.currentMushafPage.value = targetPage;
+      _autoScrollLandscapeToActiveLine(surah: surah, ayah: ayah);
+    } else {
+      _goToPage(targetPage);
+    }
   }
 
   void _autoScrollLandscapeToActiveLine({
@@ -597,7 +619,15 @@ class _MushafViewState extends State<MushafView>
       return;
     }
 
-    final page = _currentPageObject;
+    final provider = MushafProvider.instance;
+    final int? ayahPage = provider.getPageForAyah(surah, ayah);
+    final int targetPage = ayahPage ?? _currentPage;
+
+    final page = (targetPage == _currentPage &&
+            _currentPageObject != null &&
+            !_currentPageObject!.isDisposed)
+        ? _currentPageObject
+        : provider.getPage(targetPage);
     if (page == null || page.isDisposed) return;
 
     int? activeLine;
@@ -613,7 +643,7 @@ class _MushafViewState extends State<MushafView>
 
     if (activeLine == null) return;
     if (activeLine == _lastLandscapeFollowedLine &&
-        _currentPage == _lastLandscapeFollowedPage) {
+        targetPage == _lastLandscapeFollowedPage) {
       return;
     }
 
@@ -625,25 +655,35 @@ class _MushafViewState extends State<MushafView>
         : ((activeLine - 0.5) / 15.0);
 
     final double landscapePageHeight = _landscapePageHeight;
-    final double pageTopOffset = (_currentPage - 1) * _landscapeItemExtent;
+    final double pageTopOffset = (targetPage - 1) * _landscapeItemExtent;
     final double lineYInScroll =
         pageTopOffset + (lineFraction * landscapePageHeight);
 
     final double viewportHeight = _lastLandscapeViewportHeight > 0
         ? _lastLandscapeViewportHeight
-        : 360.0;
-    final double targetScroll = (lineYInScroll - (viewportHeight * 0.38))
+        : 300.0;
+    // Position active line at ~35% of visible viewport height (above the bottom dock)
+    final double targetScroll = (lineYInScroll - (viewportHeight * 0.35))
         .clamp(0.0, _landscapeScrollController.position.maxScrollExtent);
 
     final double currentScroll = _landscapeScrollController.offset;
-    if ((currentScroll - targetScroll).abs() > 24.0) {
+    if ((currentScroll - targetScroll).abs() > 18.0) {
       _lastLandscapeFollowedLine = activeLine;
-      _lastLandscapeFollowedPage = _currentPage;
-      _landscapeScrollController.animateTo(
-        targetScroll,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-      );
+      _lastLandscapeFollowedPage = targetPage;
+      if (_currentPage != targetPage) {
+        _currentPage = targetPage;
+        AppState.instance.currentMushafPage.value = targetPage;
+      }
+      _isProgrammaticScroll = true;
+      _landscapeScrollController
+          .animateTo(
+            targetScroll,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+          )
+          .whenComplete(() {
+            if (mounted) _isProgrammaticScroll = false;
+          });
     }
   }
 
@@ -1249,12 +1289,15 @@ class _MushafViewState extends State<MushafView>
     final bool isSessionActive =
         widget.isRecording || MaglisController.instance.inSession;
 
+    final bool isBarsVisible = widget.showBars;
+    final double landscapeBottomDockHeight = isBarsVisible ? 54.0 : 0.0;
+
     final double pageLabelBottom = isLandscape
-        ? (safeBottom + 8.0)
+        ? (safeBottom + (isBarsVisible ? 58.0 : 8.0))
         : (isSessionActive ? (safeBottom + 27.0) : (safeBottom + 60.0));
 
     final double bottomPadding = isLandscape
-        ? 0.0
+        ? (safeBottom + landscapeBottomDockHeight)
         : (safeBottom + 74.0);
 
     return Directionality(
@@ -1273,7 +1316,7 @@ class _MushafViewState extends State<MushafView>
             final double itemExtent = landscapePageHeight + separatorHeight;
             _landscapeItemExtent = itemExtent;
             _landscapePageHeight = landscapePageHeight;
-            _lastLandscapeViewportHeight = constraints.maxHeight;
+            _lastLandscapeViewportHeight = usableHeight;
             _isLandscapeMode = isLandscape;
 
             final double pageContainerWidth = isLandscape
@@ -1319,8 +1362,7 @@ class _MushafViewState extends State<MushafView>
                     child: Center(
                       child: SizedBox(
                         width: pageContainerWidth,
-                        height:
-                            isLandscape ? constraints.maxHeight : usableHeight,
+                        height: usableHeight,
                         child: isLandscape
                             ? NotificationListener<ScrollNotification>(
                                 onNotification: (notification) {
@@ -1334,20 +1376,27 @@ class _MushafViewState extends State<MushafView>
                                       is ScrollUpdateNotification) {
                                     if (_landscapeItemExtent > 0 &&
                                         !_isProgrammaticScroll) {
-                                      final page = (notification.metrics.pixels /
-                                                  _landscapeItemExtent)
-                                              .round() +
-                                          1;
-                                      final clamped =
-                                          QuranMetadata.clampPage(page);
-                                      if (clamped != _currentPage) {
-                                        setState(() {
-                                          _currentPage = clamped;
-                                        });
-                                        AppState.instance.currentMushafPage
-                                            .value = clamped;
-                                        _syncPageSelection(clamped);
-                                        _debouncedSavePosition(clamped);
+                                      // Only update page from scroll position when the user is explicitly dragging manually.
+                                      // During auto-scroll or recitation tracking, the page is locked to the active ayah,
+                                      // eliminating vertical jitter and feedback oscillation.
+                                      final bool isUserDragging = _landscapeScrollController.hasClients &&
+                                          _landscapeScrollController.position.userScrollDirection != ScrollDirection.idle;
+                                      if (isUserDragging) {
+                                        final page = (notification.metrics.pixels /
+                                                    _landscapeItemExtent)
+                                                .round() +
+                                            1;
+                                        final clamped =
+                                            QuranMetadata.clampPage(page);
+                                        if (clamped != _currentPage) {
+                                          setState(() {
+                                            _currentPage = clamped;
+                                          });
+                                          AppState.instance.currentMushafPage
+                                              .value = clamped;
+                                          _syncPageSelection(clamped);
+                                          _debouncedSavePosition(clamped);
+                                        }
                                       }
                                     }
                                   }
@@ -1357,6 +1406,7 @@ class _MushafViewState extends State<MushafView>
                                   controller: _landscapeScrollController,
                                   itemCount: QuranMetadata.maxPage,
                                   itemExtent: itemExtent,
+                                  padding: const EdgeInsets.only(bottom: 24.0),
                                   physics: const ClampingScrollPhysics(),
                                   itemBuilder: (context, index) {
                                     final pageNum = index + 1;

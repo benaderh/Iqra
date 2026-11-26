@@ -823,6 +823,7 @@ class _TrackingScreenState extends State<TrackingScreen>
           key: const ValueKey('mushaf_view_main'),
           controller: widget.controller,
           isRecording: widget.isRecording,
+          showBars: _showBars || widget.isRecording,
           showBottomPageNumber: true,
         ),
       );

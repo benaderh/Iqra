@@ -433,7 +433,7 @@ class _OrchestratorState extends State<_Orchestrator>
       }
     };
 
-    // Global subscription for Voice Search text and Endpoint auto-stopping
+    // Global subscription for Voice Search text and Endpoint auto-stopping / Basmala transition
     _transcriptionSub = _engine.transcriptionStream.listen((res) {
       if (_isVoiceSearching && !_isVoiceSearchPaused && mounted) {
         _voiceSearchAsrNotifier.value = res.text;
@@ -457,6 +457,8 @@ class _OrchestratorState extends State<_Orchestrator>
             }
           }
         });
+      } else if (_isRecording && _ctrl != null && mounted) {
+        _handleLiveRecitationTranscription(res.text);
       }
     });
 
@@ -500,6 +502,88 @@ class _OrchestratorState extends State<_Orchestrator>
     } catch (e) {
       DebugLogger.logSimple(
           'Update', "Play Core update check aborted safely: $e");
+    }
+  }
+
+  bool _isAutoAdvancingSurah = false;
+
+  static String _cleanArabicForBasmala(String text) {
+    var s = text.replaceAll(RegExp(r'[\u064B-\u065F\u0670\u06D6-\u06ED]'), '');
+    s = s.replaceAll(RegExp(r'[أإآٱ]'), 'ا');
+    s = s.replaceAll('ى', 'ي');
+    s = s.replaceAll('ة', 'ه');
+    return s.trim();
+  }
+
+  void _handleLiveRecitationTranscription(String rawText) {
+    if (!_isRecording || _ctrl == null || _isAutoAdvancingSurah) return;
+    final (int currentSurah, int? currentAyah) = _ctrl!.recitationCoordinate;
+    if (currentSurah <= 0 || currentSurah >= QuranMetadata.maxSurah) return;
+    if (currentAyah == null) return;
+
+    final cleanText = _cleanArabicForBasmala(rawText);
+    final bool hasBasmala = cleanText.contains('بسم الله') ||
+        cleanText.contains('الرحمن الرحيم') ||
+        cleanText.contains('الرحمان الرحيم') ||
+        cleanText.contains('باسم الله');
+
+    // 1. If at Ayah 1 of any surah > 1 (except At-Tawbah 9) and recites Basmala:
+    // Basmala is not part of Ayah 1 text, so flush audio/engine buffer cleanly for Ayah 1.
+    if (currentAyah == 1 && currentSurah > 1 && currentSurah != 9 && hasBasmala) {
+      _audio.clearBuffer();
+      _engine.resetBuffer();
+      return;
+    }
+
+    // 2. If at the end of the current surah:
+    final bool isLastAyah = QuranMetadata.isLastAyahInSurah(currentSurah, currentAyah);
+    final bool isSurahDone = _ctrl!.isSurahFinished(currentSurah) ||
+        _ctrl!.completedAyahsFor(currentSurah).contains(currentAyah);
+
+    if (isLastAyah || isSurahDone) {
+      if (hasBasmala || (isSurahDone && cleanText.isNotEmpty)) {
+        _advanceRecitationToNextSurah(currentSurah);
+      }
+    }
+  }
+
+  Future<void> _advanceRecitationToNextSurah(int currentSurah) async {
+    if (_isAutoAdvancingSurah || !_isRecording || _ctrl == null) return;
+    final int nextSurah = currentSurah + 1;
+    if (!QuranMetadata.isValidSurah(nextSurah)) return;
+
+    _isAutoAdvancingSurah = true;
+    try {
+      // Clear audio and engine buffers so the Basmala audio does not mismatch Ayah 1 of the new surah
+      _audio.clearBuffer();
+      _engine.resetBuffer();
+
+      final targetPage = MushafProvider.instance.getPageForAyah(nextSurah, 1);
+      if (targetPage != null) {
+        AppState.instance.saveMushafPage(targetPage);
+      }
+      AppState.instance.saveLastPosition(nextSurah, 1);
+
+      await _ctrl!.advanceToNextSurah(
+        nextSurah: nextSurah,
+        isRecording: true,
+      );
+
+      if (MaglisController.instance.inSession) {
+        unawaited(MaglisController.instance.claimFloor(
+          page: targetPage ?? AppState.instance.currentMushafPage.value,
+          surah: nextSurah,
+          ayah: 1,
+          activeWord: 0,
+        ));
+      }
+      _broadcastMaglisProgress();
+      if (mounted) setState(() {});
+    } catch (e) {
+      DebugLogger.logSimple('ADVANCE', '❌ Error advancing surah from mic: $e');
+    } finally {
+      await Future.delayed(const Duration(milliseconds: 600));
+      _isAutoAdvancingSurah = false;
     }
   }
 
@@ -705,6 +789,14 @@ class _OrchestratorState extends State<_Orchestrator>
         },
       );
       _syncMaglisBroadcastListeners();
+      _ctrl!.onSurahAutoAdvanced = (nextSurah, nextAyah) {
+        AppState.instance.saveLastPosition(nextSurah, nextAyah);
+        final targetPage =
+            MushafProvider.instance.getPageForAyah(nextSurah, nextAyah);
+        if (targetPage != null) {
+          AppState.instance.saveMushafPage(targetPage);
+        }
+      };
       await _ctrl!.setTargetSurah(initialSurah);
       _ctrl!.setManualAyah(initialSurah, initialAyah);
 
